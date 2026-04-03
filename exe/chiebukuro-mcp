@@ -14,7 +14,12 @@ when 'serve'
     warn "Run 'chiebukuro-mcp inspect <db_path>' to generate a suggested config."
     exit 1
   end
-  config   = JSON.parse(File.read(CONFIG_PATH, encoding: 'UTF-8'))
+  begin
+    config = JSON.parse(File.read(CONFIG_PATH, encoding: 'UTF-8'))
+  rescue JSON::ParserError => e
+    warn "Invalid JSON in #{CONFIG_PATH}: #{e.message}"
+    exit 1
+  end
   embedder = ChiebukuroMcp::Embedder.new
   ChiebukuroMcp::Server.new(config: config, embedder: embedder).run
 when 'inspect'
