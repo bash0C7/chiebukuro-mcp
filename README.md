@@ -48,16 +48,15 @@ In your `~/.claude/settings.json`:
 "mcpServers": {
   "chiebukuro-mcp": {
     "type": "stdio",
-    "command": "ruby",
-    "args": ["/path/to/chiebukuro-mcp/lib/chiebukuro_mcp/run.rb"],
-    "env": {
-      "CHIEBUKURO_CONFIG": "/path/to/chiebukuro.json"
-    }
+    "command": "/path/to/chiebukuro-mcp/exe/chiebukuro-mcp",
+    "args": ["serve"]
   }
 }
 ```
 
-The `chiebukuro.json` config file should live in your environment-specific dotfiles, not in this repo.
+The server reads `~/chiebukuro-mcp/chiebukuro.json` on startup.
+This config file must exist before starting — see **Configuration** section above for the format.
+The config file should live in your environment-specific dotfiles, not in this repo.
 
 ## Development
 
