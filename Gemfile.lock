@@ -1,9 +1,4 @@
 PATH
-  remote: ../ruby-knowledge-store
-  specs:
-    ruby_knowledge_store (0.1.0)
-
-PATH
   remote: .
   specs:
     chiebukuro_mcp (0.1.0)
@@ -61,7 +56,6 @@ DEPENDENCIES
   informers
   mcp
   rake
-  ruby_knowledge_store!
   sqlite-vec
   sqlite3
   test-unit
@@ -83,7 +77,6 @@ CHECKSUMS
   power_assert (3.0.1) sha256=8ce9876716cc74e863fcd4cdcdc52d792bd983598d1af3447083a3a9a4d34103
   public_suffix (7.0.5) sha256=1a8bb08f1bbea19228d3bed6e5ed908d1cb4f7c2726d18bd9cadf60bc676f623
   rake (13.3.1) sha256=8c9e89d09f66a26a01264e7e3480ec0607f0c497a861ef16063604b1b08eb19c
-  ruby_knowledge_store (0.1.0)
   sqlite-vec (0.1.9-arm64-darwin) sha256=f319ab08757741811c6f2f7d2b58c1b9009460e899e1b69d99fdab288286d9bf
   sqlite-vec (0.1.9-x86_64-darwin) sha256=8a8d16c86c8d011359b0ab6f933dc9859f1cc265be6a8a9ac20ecd06cb3b8d32
   sqlite-vec (0.1.9-x86_64-linux) sha256=772389c3bf68e7976cfdd8e7c74e820245007e03294808b9b05cdbbf5b02f398

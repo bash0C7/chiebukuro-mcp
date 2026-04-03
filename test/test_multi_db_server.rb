@@ -1,6 +1,5 @@
 require_relative 'test_helper'
 require_relative '../lib/chiebukuro_mcp/server'
-require 'ruby_knowledge_store'
 require 'tempfile'
 require 'json'
 
@@ -12,9 +11,8 @@ class TestMultiDbServer < Test::Unit::TestCase
     @db2_path = @tmpfile2.path
     [@tmpfile1, @tmpfile2].each(&:close)
 
-    migrations_dir = RubyKnowledgeStore::MIGRATIONS_DIR
-    RubyKnowledgeStore::Migrator.new(@db1_path, migrations_dir: migrations_dir).run
-    RubyKnowledgeStore::Migrator.new(@db2_path, migrations_dir: migrations_dir).run
+    TestDbHelper.setup_db(@db1_path)
+    TestDbHelper.setup_db(@db2_path)
 
     @config = {
       "databases" => {

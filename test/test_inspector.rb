@@ -1,16 +1,13 @@
 require_relative 'test_helper'
 require_relative '../lib/chiebukuro_mcp/inspector'
-require 'ruby_knowledge_store'
 require 'tempfile'
-require 'sqlite3'
-require 'sqlite_vec'
 
 class TestInspector < Test::Unit::TestCase
   def setup
     @tmpfile = Tempfile.new(['inspector_test', '.db'])
     @db_path = @tmpfile.path
     @tmpfile.close
-    RubyKnowledgeStore::Migrator.new(@db_path, migrations_dir: RubyKnowledgeStore::MIGRATIONS_DIR).run
+    TestDbHelper.setup_db(@db_path)
   end
 
   def teardown
