@@ -1,6 +1,6 @@
 # chiebukuro-mcp
 
-Read-only SQLite MCP server. Connects to one or more SQLite databases (with optional vec0 semantic search) and exposes them as MCP tools.
+Read-only MCP server for multiple SQLite databases with optional vec0 semantic search.
 
 Per-database tool names are derived from the config key:
 - `chiebukuro_query_<db_name>` — SELECT / WITH only (INSERT/UPDATE/DELETE/DROP are rejected)
