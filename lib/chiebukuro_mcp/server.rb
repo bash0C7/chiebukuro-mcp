@@ -93,21 +93,21 @@ module ChiebukuroMcp
       ServerFacade.new(mcp_server, tools, resources)
     end
 
-    # MCP::Server のラッパー。テストが期待する tools/resources インターフェースを提供する。
+    # MCP::Server のラッパー。テストが期待する tool_classes/resource_list インターフェースを提供する。
     class ServerFacade
       def initialize(mcp_server, tools, resources)
-        @mcp_server = mcp_server
-        @tools      = tools
-        @resources  = resources
+        @mcp_server    = mcp_server
+        @tool_classes  = tools
+        @resource_list = resources
       end
 
       # ツールクラスの配列を返す（テストが .tool_name を呼べるように）
-      def tools
-        @tools
+      def tool_classes
+        @tool_classes
       end
 
-      def resources
-        @resources
+      def resource_list
+        @resource_list
       end
 
       # MCP::Server の他のメソッドへの委譲
