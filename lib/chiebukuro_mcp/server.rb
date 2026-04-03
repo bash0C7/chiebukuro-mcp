@@ -6,90 +6,126 @@ require_relative 'semantic_search_tool'
 
 module ChiebukuroMcp
   class Server
-    def initialize(db_path:, embedder:)
-      @db_path = db_path
-      @query_tool           = QueryTool.new(db_path)
-      @schema_resource      = SchemaResource.new(db_path)
-      @semantic_search_tool = SemanticSearchTool.new(db_path, embedder: embedder)
+    def initialize(config:, embedder:)
+      @databases = config["databases"] || config[:databases]
+      @embedder  = embedder
     end
 
     def build_mcp_server
-      query_tool            = @query_tool
-      schema_resource       = @schema_resource
-      semantic_search_tool  = @semantic_search_tool
+      tools             = []
+      resources         = []
+      resource_handlers = {}
 
-      # Tool: query — SELECT のみ許可
-      query_tool_class = MCP::Tool.define(
-        name: 'query',
-        description: 'Execute a read-only SELECT query against the Ruby knowledge SQLite database',
-        input_schema: {
-          type: 'object',
-          properties: {
-            sql: {
-              type: 'string',
-              description: 'SQL SELECT statement to execute'
+      @databases.each do |db_name, db_config|
+        path    = db_config["path"]            || db_config[:path]
+        desc    = db_config["description"]     || db_config[:description] || ""
+        sem_cfg = db_config["semantic_search"] || db_config[:semantic_search]
+
+        query_tool_obj = QueryTool.new(path)
+        query_tool_class = MCP::Tool.define(
+          name: "query_#{db_name}",
+          description: "Execute a read-only SELECT query against: #{desc}",
+          input_schema: {
+            type: 'object',
+            properties: {
+              sql: { type: 'string', description: 'SQL SELECT statement to execute' }
+            },
+            required: ['sql']
+          }
+        ) do |sql:, **_|
+          result = query_tool_obj.call(sql: sql)
+          MCP::Tool::Response.new([{ type: 'text', text: result }])
+        rescue ArgumentError => e
+          MCP::Tool::Response.new([{ type: 'text', text: e.message }], error: true)
+        rescue => e
+          MCP::Tool::Response.new([{ type: 'text', text: e.message }], error: true)
+        end
+        tools << query_tool_class
+
+        if sem_cfg
+          sem_tool_obj = SemanticSearchTool.new(path, embedder: @embedder)
+          sem_tool_class = MCP::Tool.define(
+            name: "semantic_search_#{db_name}",
+            description: "Semantic similarity search (768-dim ruri-v3) against: #{desc}",
+            input_schema: {
+              type: 'object',
+              properties: {
+                query: { type: 'string',  description: 'Natural language search query' },
+                limit: { type: 'integer', description: 'Number of results (default: 5)' }
+              },
+              required: ['query']
             }
-          },
-          required: ['sql']
-        }
-      ) do |sql:|
-        result = query_tool.call(sql: sql)
-        MCP::Tool::Response.new([{ type: 'text', text: result }])
-      rescue ArgumentError => e
-        MCP::Tool::Response.new([{ type: 'text', text: e.message }], error: true)
-      rescue => e
-        MCP::Tool::Response.new([{ type: 'text', text: e.message }], error: true)
+          ) do |query:, limit: 5, **_|
+            result = sem_tool_obj.call(query: query, limit: limit)
+            MCP::Tool::Response.new([{ type: 'text', text: result }])
+          rescue => e
+            MCP::Tool::Response.new([{ type: 'text', text: e.message }], error: true)
+          end
+          tools << sem_tool_class
+        end
+
+        schema_res_obj = SchemaResource.new(path)
+        schema_uri     = "schema://#{db_name}"
+        resources << MCP::Resource.new(
+          uri:         schema_uri,
+          name:        "#{db_name}_schema",
+          description: "SQLite database schema for #{db_name}",
+          mime_type:   'text/markdown'
+        )
+        resource_handlers[schema_uri] = schema_res_obj
       end
 
-      # Resource: schema://database — スキーマ説明
-      schema_res = MCP::Resource.new(
-        uri: 'schema://database',
-        name: 'database_schema',
-        description: 'SQLite database schema with table and column descriptions',
-        mime_type: 'text/markdown'
+      mcp_server = MCP::Server.new(
+        name:      'chiebukuro-mcp',
+        version:   '0.1.0',
+        tools:     tools,
+        resources: resources
       )
 
-      # Tool: semantic_search — 自然言語クエリ → vec0 KNN 検索
-      semantic_search_tool_class = MCP::Tool.define(
-        name: 'semantic_search',
-        description: 'Semantic similarity search using vector embeddings (768-dim ruri-v3). Returns top-N most relevant Ruby knowledge entries.',
-        input_schema: {
-          type: 'object',
-          properties: {
-            query: { type: 'string',  description: 'Natural language search query' },
-            limit: { type: 'integer', description: 'Number of results to return (default: 5)' }
-          },
-          required: ['query']
-        }
-      ) do |query:, limit: 5|
-        result = semantic_search_tool.call(query: query, limit: limit)
-        MCP::Tool::Response.new([{ type: 'text', text: result }])
-      rescue => e
-        MCP::Tool::Response.new([{ type: 'text', text: e.message }], error: true)
+      mcp_server.resources_read_handler do |params|
+        uri     = params[:uri]
+        handler = resource_handlers[uri]
+        next [] unless handler
+        content = handler.call
+        [{ uri: uri, mimeType: 'text/markdown', text: content }]
       end
 
-      server = MCP::Server.new(
-        name: 'chiebukuro-mcp',
-        version: '0.1.0',
-        tools: [query_tool_class, semantic_search_tool_class],
-        resources: [schema_res]
-      )
+      ServerFacade.new(mcp_server, tools, resources)
+    end
 
-      server.resources_read_handler do |params|
-        uri = params[:uri]
-        if uri == 'schema://database'
-          content = schema_resource.call
-          [{ uri: uri, mimeType: 'text/markdown', text: content }]
+    # MCP::Server のラッパー。テストが期待する tools/resources インターフェースを提供する。
+    class ServerFacade
+      def initialize(mcp_server, tools, resources)
+        @mcp_server = mcp_server
+        @tools      = tools
+        @resources  = resources
+      end
+
+      # ツールクラスの配列を返す（テストが .tool_name を呼べるように）
+      def tools
+        @tools
+      end
+
+      def resources
+        @resources
+      end
+
+      # MCP::Server の他のメソッドへの委譲
+      def respond_to_missing?(name, include_private = false)
+        @mcp_server.respond_to?(name, include_private) || super
+      end
+
+      def method_missing(name, *args, &block)
+        if @mcp_server.respond_to?(name)
+          @mcp_server.send(name, *args, &block)
         else
-          []
+          super
         end
       end
-
-      server
     end
 
     def run
-      server = build_mcp_server
+      server    = build_mcp_server
       transport = MCP::Server::Transports::StdioTransport.new(server)
       transport.open
     end
