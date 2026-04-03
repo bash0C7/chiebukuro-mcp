@@ -40,23 +40,32 @@ bundle exec exe/chiebukuro-mcp inspect /path/to/database.db
 
 The output includes `suggested_config` with auto-detected `semantic_search` settings if vec0 tables are found.
 
-## Claude Code integration
+## Integration
 
-In your `~/.claude/settings.json`:
+The server is launched via `scripts/start_mcp.sh`, which explicitly uses rbenv's bundler to avoid system Ruby conflicts.
+
+**Claude Code** — add to `~/.claude/settings.json`:
 
 ```json
 "mcpServers": {
   "chiebukuro-mcp": {
     "type": "stdio",
-    "command": "/path/to/chiebukuro-mcp/exe/chiebukuro-mcp",
-    "args": ["serve"]
+    "command": "/path/to/chiebukuro-mcp/scripts/start_mcp.sh"
   }
 }
 ```
 
-The server reads `~/chiebukuro-mcp/chiebukuro.json` on startup.
-This config file must exist before starting — see **Configuration** section above for the format.
-The config file should live in your environment-specific dotfiles, not in this repo.
+**Claude Desktop** — add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+
+```json
+"mcpServers": {
+  "chiebukuro-mcp": {
+    "command": "/path/to/chiebukuro-mcp/scripts/start_mcp.sh"
+  }
+}
+```
+
+`~/chiebukuro-mcp/chiebukuro.json` must exist before starting — see **Configuration** section above for the format. Keep it in your dotfiles, not this repo.
 
 ## Development
 
