@@ -5,9 +5,17 @@
 任意の SQLite DB（vec0 セマンティック検索対応）を MCP ツールとして公開する読み取り専用サーバー。
 環境依存の設定（DBパス等）は外部の `chiebukuro.json` で管理し、このリポジトリには含まない。
 
-**責務の境界（やらないこと）**
-- DB のコピー・バックアップ処理は持たない（dotfiles 側の責任）
-- JSON/テキスト → SQLite の変換・ETL 処理は持たない（別 connector プロジェクトの責任）
+## エコシステムにおける本 gem の責務
+
+chiebukuro-mcp gem は **SQLite を読んで MCP ツールとして提供するだけ** に徹する。
+
+DB の生成・変換処理は本 gem の責務外:
+
+- MacアプリのSQLiteコピー・バックアップ → dotfiles（chiebukuro-mcp 設定リポジトリ）
+- JSON/テキスト → SQLite の変換（ワンショット） → dotfiles の `scripts/`
+- JSON/テキスト → SQLite の変換（複雑・継続メンテ） → 別 collector プロジェクト
+
+新しいデータソースを追加する際、変換処理を本 gem に持ち込まないこと。
 
 ## 主要クラス
 
