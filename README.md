@@ -8,7 +8,7 @@ Per-database tool names are derived from the config key:
 
 ## Configuration
 
-The server reads a JSON config file. Pass the path via the `CHIEBUKURO_CONFIG` environment variable.
+The server reads `~/chiebukuro-mcp/chiebukuro.json` on startup.
 
 ```json
 {
