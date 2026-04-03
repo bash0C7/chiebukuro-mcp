@@ -9,8 +9,8 @@ Ruby ナレッジ DB 向けの読み取り専用 SQLite MCP サーバー。
 - `ChiebukuroMcp::SchemaResource` — DB スキーマ + _sqlite_mcp_meta 説明文を返す
 
 ## テスト
-- `ruby_knowledge_store` に依存（Gemfile で `path: '../ruby-knowledge-store'`）
 - `bundle exec rake test`
+- テスト用 DB は `TestDbHelper` モジュール（`test/test_helper.rb`）が直接構築（外部 gem 依存なし）
 
 ## 依存
-- ruby_knowledge_store（ローカル path）, sqlite3, sqlite-vec, mcp
+- sqlite3, sqlite-vec, mcp
