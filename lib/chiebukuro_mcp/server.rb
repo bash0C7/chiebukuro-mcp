@@ -23,8 +23,8 @@ module ChiebukuroMcp
 
         query_tool_obj = QueryTool.new(path)
         query_tool_class = MCP::Tool.define(
-          name: "query_#{db_name}",
-          description: "Execute a read-only SELECT query against: #{desc}",
+          name: "chiebukuro_query_#{db_name}",
+          description: "【chiebukuro 知恵袋】#{db_name} DBへの読み取り専用 SELECT クエリを実行する。#{desc}",
           input_schema: {
             type: 'object',
             properties: {
@@ -45,8 +45,8 @@ module ChiebukuroMcp
         if sem_cfg
           sem_tool_obj = SemanticSearchTool.new(path, embedder: @embedder)
           sem_tool_class = MCP::Tool.define(
-            name: "semantic_search_#{db_name}",
-            description: "Semantic similarity search (768-dim ruri-v3) against: #{desc}",
+            name: "chiebukuro_semantic_search_#{db_name}",
+            description: "【chiebukuro 知恵袋】#{db_name} DBへの意味検索（768次元 ruri-v3 ベクトル）。#{desc}",
             input_schema: {
               type: 'object',
               properties: {

@@ -53,16 +53,16 @@ class TestMultiDbServer < Test::Unit::TestCase
     server = ChiebukuroMcp::Server.new(config: @config, embedder: @embedder)
     mcp = server.build_mcp_server
     tool_names = mcp.tool_classes.map(&:tool_name)
-    assert_include tool_names, 'query_db_one'
-    assert_include tool_names, 'query_db_two'
+    assert_include tool_names, 'chiebukuro_query_db_one'
+    assert_include tool_names, 'chiebukuro_query_db_two'
   end
 
   def test_semantic_search_tool_only_for_db_with_config
     server = ChiebukuroMcp::Server.new(config: @config, embedder: @embedder)
     mcp = server.build_mcp_server
     tool_names = mcp.tool_classes.map(&:tool_name)
-    assert_include tool_names, 'semantic_search_db_one'
-    assert_not_include tool_names, 'semantic_search_db_two'
+    assert_include tool_names, 'chiebukuro_semantic_search_db_one'
+    assert_not_include tool_names, 'chiebukuro_semantic_search_db_two'
   end
 
   def test_schema_resources_created_for_each_db
@@ -76,7 +76,7 @@ class TestMultiDbServer < Test::Unit::TestCase
   def test_query_tool_executes_select
     server = ChiebukuroMcp::Server.new(config: @config, embedder: @embedder)
     mcp = server.build_mcp_server
-    tool_class = mcp.tool_classes.find { |t| t.tool_name == 'query_db_one' }
+    tool_class = mcp.tool_classes.find { |t| t.tool_name == 'chiebukuro_query_db_one' }
     response = tool_class.call(sql: 'SELECT 1 AS n', server_context: {})
     result = JSON.parse(response.content.first[:text])
     assert_equal 1, result.first['n']
@@ -85,7 +85,7 @@ class TestMultiDbServer < Test::Unit::TestCase
   def test_query_tool_rejects_insert
     server = ChiebukuroMcp::Server.new(config: @config, embedder: @embedder)
     mcp = server.build_mcp_server
-    tool_class = mcp.tool_classes.find { |t| t.tool_name == 'query_db_one' }
+    tool_class = mcp.tool_classes.find { |t| t.tool_name == 'chiebukuro_query_db_one' }
     response = tool_class.call(
       sql: 'INSERT INTO memories (content,source,content_hash,created_at) VALUES ("x","s","h","2024-01-01")',
       server_context: {}
@@ -96,7 +96,7 @@ class TestMultiDbServer < Test::Unit::TestCase
   def test_description_embedded_in_tool
     server = ChiebukuroMcp::Server.new(config: @config, embedder: @embedder)
     mcp = server.build_mcp_server
-    tool_class = mcp.tool_classes.find { |t| t.tool_name == 'query_db_one' }
+    tool_class = mcp.tool_classes.find { |t| t.tool_name == 'chiebukuro_query_db_one' }
     assert_include tool_class.description, 'First test DB'
   end
 end
