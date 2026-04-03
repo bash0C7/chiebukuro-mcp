@@ -71,7 +71,7 @@ class TestInspector < Test::Unit::TestCase
     db.close
 
     result = ChiebukuroMcp::Inspector.new(plain_path).inspect_db
-    assert_not result["suggested_config"].key?("semantic_search"),
+    assert !result["suggested_config"].key?("semantic_search"),
       "vec テーブルなしなら semantic_search キーはないはず"
 
     plain_tmpfile.unlink

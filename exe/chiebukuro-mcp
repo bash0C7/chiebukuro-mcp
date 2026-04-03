@@ -1,0 +1,19 @@
+#!/usr/bin/env ruby
+# exe/chiebukuro-mcp
+require 'bundler/setup'
+require_relative '../lib/chiebukuro_mcp'
+require 'json'
+
+case ARGV[0]
+when 'inspect'
+  db_path = ARGV[1]
+  unless db_path
+    warn "Usage: chiebukuro-mcp inspect <db_path>"
+    exit 1
+  end
+  result = ChiebukuroMcp::Inspector.new(db_path).inspect_db
+  puts JSON.pretty_generate(result)
+else
+  warn "Usage: chiebukuro-mcp inspect <db_path>"
+  exit 1
+end
