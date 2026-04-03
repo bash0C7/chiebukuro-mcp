@@ -14,6 +14,7 @@
 | `ChiebukuroMcp::SemanticSearchTool` | vec0 KNN 検索。デフォルト limit 5 |
 | `ChiebukuroMcp::SchemaResource` | DB スキーマ + `_sqlite_mcp_meta` 説明文を返す |
 | `ChiebukuroMcp::Inspector` | DBを解析して `suggested_config` を生成（`inspect` サブコマンド用） |
+| `ChiebukuroMcp::Embedder` | `informers` gem で `ruri-v3-310m-onnx` をラップ。768次元ベクトルを生成（`serve` サブコマンド用） |
 
 ## 設定の流れ
 
