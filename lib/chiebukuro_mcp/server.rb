@@ -115,9 +115,9 @@ module ChiebukuroMcp
         @mcp_server.respond_to?(name, include_private) || super
       end
 
-      def method_missing(name, *args, &block)
+      def method_missing(name, *args, **kwargs, &block)
         if @mcp_server.respond_to?(name)
-          @mcp_server.send(name, *args, &block)
+          @mcp_server.send(name, *args, **kwargs, &block)
         else
           super
         end
