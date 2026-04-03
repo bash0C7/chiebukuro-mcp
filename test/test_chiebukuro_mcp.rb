@@ -2,7 +2,6 @@ require_relative 'test_helper'
 require_relative '../lib/chiebukuro_mcp/query_tool'
 require_relative '../lib/chiebukuro_mcp/schema_resource'
 require_relative '../lib/chiebukuro_mcp/semantic_search_tool'
-require 'ruby_knowledge_store'
 require 'tempfile'
 
 class TestQueryTool < Test::Unit::TestCase
@@ -10,8 +9,7 @@ class TestQueryTool < Test::Unit::TestCase
     @tmpfile = Tempfile.new(['test_query_tool', '.db'])
     @db_path = @tmpfile.path
     @tmpfile.close
-
-    RubyKnowledgeStore::Migrator.new(@db_path, migrations_dir: RubyKnowledgeStore::MIGRATIONS_DIR).run
+    TestDbHelper.setup_db(@db_path)
   end
 
   def teardown
@@ -74,8 +72,7 @@ class TestSchemaResourceWithMeta < Test::Unit::TestCase
     @tmpfile = Tempfile.new(['test_schema_resource_with_meta', '.db'])
     @db_path = @tmpfile.path
     @tmpfile.close
-
-    RubyKnowledgeStore::Migrator.new(@db_path, migrations_dir: RubyKnowledgeStore::MIGRATIONS_DIR).run
+    TestDbHelper.setup_db(@db_path)
   end
 
   def teardown
@@ -116,14 +113,13 @@ class TestSemanticSearchTool < Test::Unit::TestCase
     @db_path = @tmpfile.path
     @tmpfile.close
 
-    RubyKnowledgeStore::Migrator.new(@db_path, migrations_dir: RubyKnowledgeStore::MIGRATIONS_DIR).run
+    TestDbHelper.setup_db(@db_path)
 
     @stub_embedder = StubEmbedder.new
-    store = RubyKnowledgeStore::Store.new(@db_path, embedder: @stub_embedder)
-    store.store('PicoRuby の GPIO クラス', source: 'picoruby/picoruby:docs/gpio')
-    store.store('CRuby の Array クラス', source: 'rurema/doctree:ruby3.3/array')
-    store.store('mruby の Hash クラス', source: 'rurema/doctree:ruby3.3/hash')
-    store.close
+    # SF フィクスチャ: ハイペリオン / デューン / アシモフ Foundation テーマ
+    TestDbHelper.insert_memory(@db_path, 'ハイペリオン の TechnoCore クラス', 'hyperion/core:docs/technocore', @stub_embedder)
+    TestDbHelper.insert_memory(@db_path, 'アトレイデス の Mentats クラス', 'dune/arrakis:docs/mentats', @stub_embedder)
+    TestDbHelper.insert_memory(@db_path, 'ソラリア の Android クラス', 'asimov/foundation:docs/android', @stub_embedder)
   end
 
   def teardown
@@ -132,7 +128,7 @@ class TestSemanticSearchTool < Test::Unit::TestCase
 
   def test_semantic_search_returns_results_with_expected_keys
     tool = ChiebukuroMcp::SemanticSearchTool.new(@db_path, embedder: @stub_embedder)
-    result = tool.call(query: 'GPIO')
+    result = tool.call(query: 'TechnoCore')
     parsed = JSON.parse(result)
     assert parsed.length > 0
     first = parsed.first
@@ -143,21 +139,19 @@ class TestSemanticSearchTool < Test::Unit::TestCase
 
   def test_semantic_search_limit_respected
     tool = ChiebukuroMcp::SemanticSearchTool.new(@db_path, embedder: @stub_embedder)
-    result = tool.call(query: 'Ruby', limit: 2)
+    result = tool.call(query: 'SF universe', limit: 2)
     parsed = JSON.parse(result)
     assert_equal 2, parsed.length
   end
 
   def test_semantic_search_default_limit_is_five
-    store = RubyKnowledgeStore::Store.new(@db_path, embedder: @stub_embedder)
-    store.store('record 4', source: 'test/4')
-    store.store('record 5', source: 'test/5')
-    store.store('record 6', source: 'test/6')
-    store.store('record 7', source: 'test/7')
-    store.close
+    TestDbHelper.insert_memory(@db_path, 'ガイア の Foundation クラス', 'asimov/foundation:docs/gaia', @stub_embedder)
+    TestDbHelper.insert_memory(@db_path, 'ターミナス の Encyclopedia クラス', 'asimov/foundation:docs/terminus', @stub_embedder)
+    TestDbHelper.insert_memory(@db_path, 'セルダン の Psychohistory クラス', 'asimov/foundation:docs/seldon', @stub_embedder)
+    TestDbHelper.insert_memory(@db_path, 'スペーサー の Robot クラス', 'asimov/foundation:docs/spacer', @stub_embedder)
 
     tool = ChiebukuroMcp::SemanticSearchTool.new(@db_path, embedder: @stub_embedder)
-    result = tool.call(query: 'Ruby')
+    result = tool.call(query: 'Foundation')
     parsed = JSON.parse(result)
     assert_equal 5, parsed.length
   end
@@ -170,8 +164,6 @@ class TestSchemaResourceWithoutMeta < Test::Unit::TestCase
     @tmpfile.close
 
     # _sqlite_mcp_meta なしの最小限 DB（memories テーブルのみ）
-    require 'sqlite3'
-    require 'sqlite_vec'
     db = SQLite3::Database.new(@db_path)
     db.enable_load_extension(true)
     SqliteVec.load(db)
