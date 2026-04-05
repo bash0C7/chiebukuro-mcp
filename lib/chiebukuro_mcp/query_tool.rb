@@ -11,7 +11,10 @@ module ChiebukuroMcp
     def call(sql:)
       validate_select!(sql)
       db = open_db
+      t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       rows = db.execute(sql)
+      elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0
+      warn "[chiebukuro-mcp SLOW QUERY] #{elapsed.round(2)}s | #{sql}" if elapsed > 1.0
       JSON.generate(rows)
     rescue SQLite3::Exception => e
       raise "SQLite error: #{e.message}"
