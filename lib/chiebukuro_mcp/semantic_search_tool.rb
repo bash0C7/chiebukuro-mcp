@@ -23,9 +23,10 @@ module ChiebukuroMcp
       @join_key       = cfg["join_key"]
     end
 
-    def call(query:, limit: 5)
+    def call(query:, limit: 5, source_filter: nil)
       embedding = @embedder.embed(query)
       blob = embedding.pack('f*')
+      fetch_limit = source_filter ? limit * 3 : limit
       db = open_db
       rows = db.execute(
         "SELECT m.#{@content_column}, m.#{@source_column}, v.distance
@@ -33,11 +34,16 @@ module ChiebukuroMcp
          JOIN #{@content_table} m ON m.id = v.#{@join_key}
          WHERE v.embedding MATCH ? AND k = ?
          ORDER BY v.distance",
-        [blob, limit]
+        [blob, fetch_limit]
       )
-      JSON.generate(rows.map { |r|
+      results = rows.map { |r|
         { 'content' => r[@content_column], 'source' => r[@source_column], 'distance' => r['distance'] }
-      })
+      }
+      if source_filter
+        pattern = Regexp.new(source_filter)
+        results = results.select { |r| r['source'].match?(pattern) }
+      end
+      JSON.generate(results.first(limit))
     rescue SQLite3::Exception => e
       raise "SQLite error: #{e.message}"
     ensure

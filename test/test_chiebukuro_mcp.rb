@@ -157,6 +157,51 @@ class TestSemanticSearchTool < Test::Unit::TestCase
   end
 end
 
+class TestSemanticSearchToolSourceFilter < Test::Unit::TestCase
+  def setup
+    @tmpfile = Tempfile.new(['test_source_filter', '.db'])
+    @db_path = @tmpfile.path
+    @tmpfile.close
+
+    TestDbHelper.setup_db(@db_path)
+
+    @stub_embedder = StubEmbedder.new
+    TestDbHelper.insert_memory(@db_path, 'ZJIT の最適化', 'ruby/ruby:trunk/article', @stub_embedder)
+    TestDbHelper.insert_memory(@db_path, 'MJIT ドキュメント', 'rurema/doctree:ruby4.0/_builtin#RubyVM::MJIT', @stub_embedder)
+    TestDbHelper.insert_memory(@db_path, 'GC の改善記事', 'ruby/ruby:trunk/article', @stub_embedder)
+    TestDbHelper.insert_memory(@db_path, 'GC モジュール', 'rurema/doctree:ruby4.0/_builtin#GC', @stub_embedder)
+    TestDbHelper.insert_memory(@db_path, 'PicoRuby WASM', 'picoruby/picoruby:trunk/article', @stub_embedder)
+  end
+
+  def teardown
+    @tmpfile.unlink
+  end
+
+  def test_source_filter_limits_results_to_matching_sources
+    tool = ChiebukuroMcp::SemanticSearchTool.new(@db_path, embedder: @stub_embedder)
+    result = tool.call(query: 'optimization', source_filter: 'ruby/ruby:trunk')
+    parsed = JSON.parse(result)
+    assert parsed.length > 0
+    parsed.each do |r|
+      assert_match(/ruby\/ruby:trunk/, r['source'])
+    end
+  end
+
+  def test_source_filter_nil_returns_all
+    tool = ChiebukuroMcp::SemanticSearchTool.new(@db_path, embedder: @stub_embedder)
+    result = tool.call(query: 'test')
+    parsed = JSON.parse(result)
+    assert_equal 5, parsed.length
+  end
+
+  def test_source_filter_no_match_returns_empty
+    tool = ChiebukuroMcp::SemanticSearchTool.new(@db_path, embedder: @stub_embedder)
+    result = tool.call(query: 'test', source_filter: 'nonexistent')
+    parsed = JSON.parse(result)
+    assert_equal 0, parsed.length
+  end
+end
+
 class TestSemanticSearchToolCustomSchema < Test::Unit::TestCase
   def setup
     @tmpfile = Tempfile.new(['test_custom_semantic', '.db'])

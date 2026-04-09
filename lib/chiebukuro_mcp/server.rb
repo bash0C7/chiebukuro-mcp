@@ -50,13 +50,14 @@ module ChiebukuroMcp
             input_schema: {
               type: 'object',
               properties: {
-                query: { type: 'string',  description: 'Natural language search query' },
-                limit: { type: 'integer', description: 'Number of results (default: 5)' }
+                query:         { type: 'string',  description: 'Natural language search query' },
+                limit:         { type: 'integer', description: 'Number of results (default: 5)' },
+                source_filter: { type: 'string',  description: 'Optional regex to filter by source (e.g., "ruby/ruby:trunk" for CRuby trunk articles, "rurema" for rurema docs)' }
               },
               required: ['query']
             }
-          ) do |query:, limit: 5, **_|
-            result = sem_tool_obj.call(query: query, limit: limit)
+          ) do |query:, limit: 5, source_filter: nil, **_|
+            result = sem_tool_obj.call(query: query, limit: limit, source_filter: source_filter)
             MCP::Tool::Response.new([{ type: 'text', text: result }])
           rescue => e
             MCP::Tool::Response.new([{ type: 'text', text: e.message }], error: true)
