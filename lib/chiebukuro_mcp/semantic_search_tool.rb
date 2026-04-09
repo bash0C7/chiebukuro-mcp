@@ -4,9 +4,23 @@ require 'json'
 
 module ChiebukuroMcp
   class SemanticSearchTool
-    def initialize(db_path, embedder:)
+    DEFAULT_SEM_CFG = {
+      "vec_table"      => "memories_vec",
+      "content_table"  => "memories",
+      "content_column" => "content",
+      "source_column"  => "source",
+      "join_key"       => "memory_id"
+    }.freeze
+
+    def initialize(db_path, embedder:, sem_cfg: nil)
       @db_path  = db_path
       @embedder = embedder
+      cfg = DEFAULT_SEM_CFG.merge(sem_cfg || {})
+      @vec_table      = cfg["vec_table"]
+      @content_table  = cfg["content_table"]
+      @content_column = cfg["content_column"]
+      @source_column  = cfg["source_column"]
+      @join_key       = cfg["join_key"]
     end
 
     def call(query:, limit: 5)
@@ -14,15 +28,15 @@ module ChiebukuroMcp
       blob = embedding.pack('f*')
       db = open_db
       rows = db.execute(
-        "SELECT m.content, m.source, v.distance
-         FROM memories_vec v
-         JOIN memories m ON m.id = v.memory_id
+        "SELECT m.#{@content_column}, m.#{@source_column}, v.distance
+         FROM #{@vec_table} v
+         JOIN #{@content_table} m ON m.id = v.#{@join_key}
          WHERE v.embedding MATCH ? AND k = ?
          ORDER BY v.distance",
         [blob, limit]
       )
       JSON.generate(rows.map { |r|
-        { 'content' => r['content'], 'source' => r['source'], 'distance' => r['distance'] }
+        { 'content' => r[@content_column], 'source' => r[@source_column], 'distance' => r['distance'] }
       })
     rescue SQLite3::Exception => e
       raise "SQLite error: #{e.message}"

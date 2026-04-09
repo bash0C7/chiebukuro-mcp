@@ -157,6 +157,85 @@ class TestSemanticSearchTool < Test::Unit::TestCase
   end
 end
 
+class TestSemanticSearchToolCustomSchema < Test::Unit::TestCase
+  def setup
+    @tmpfile = Tempfile.new(['test_custom_semantic', '.db'])
+    @db_path = @tmpfile.path
+    @tmpfile.close
+
+    # blog_entries 風のカスタムスキーマを作成
+    db = SQLite3::Database.new(@db_path)
+    db.enable_load_extension(true)
+    SqliteVec.load(db)
+    db.enable_load_extension(false)
+    db.execute_batch(<<~SQL)
+      CREATE TABLE blog_entries (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        source TEXT NOT NULL,
+        date TEXT,
+        title TEXT,
+        body TEXT NOT NULL
+      );
+      CREATE VIRTUAL TABLE blog_entries_vec
+        USING vec0(entry_id INTEGER PRIMARY KEY, embedding FLOAT[768]);
+    SQL
+
+    @stub_embedder = StubEmbedder.new
+
+    # テストデータ挿入
+    [
+      ["mastodol.jp", "Hello Mastodon"],
+      ["twitter:bash0C7", "Hello Twitter"],
+      ["bash0c7.hatenablog.com", "Hello Hatena Blog"]
+    ].each do |src, content|
+      db.execute("INSERT INTO blog_entries (source, date, title, body) VALUES (?, '2020-01-01', NULL, ?)", [src, content])
+      id = db.last_insert_row_id
+      blob = @stub_embedder.embed(content).pack('f*')
+      db.execute("INSERT INTO blog_entries_vec(entry_id, embedding) VALUES (?, ?)", [id, blob])
+    end
+    db.close
+
+    @sem_cfg = {
+      "vec_table"      => "blog_entries_vec",
+      "content_table"  => "blog_entries",
+      "content_column" => "body",
+      "source_column"  => "source",
+      "join_key"       => "entry_id"
+    }
+  end
+
+  def teardown
+    @tmpfile.unlink
+  end
+
+  def test_custom_schema_returns_results
+    tool = ChiebukuroMcp::SemanticSearchTool.new(@db_path, embedder: @stub_embedder, sem_cfg: @sem_cfg)
+    result = tool.call(query: 'Hello')
+    parsed = JSON.parse(result)
+    assert_equal 3, parsed.length
+    assert parsed.first.key?('content')
+    assert parsed.first.key?('source')
+  end
+
+  def test_custom_schema_content_column_mapped
+    tool = ChiebukuroMcp::SemanticSearchTool.new(@db_path, embedder: @stub_embedder, sem_cfg: @sem_cfg)
+    result = tool.call(query: 'Hello')
+    parsed = JSON.parse(result)
+    contents = parsed.map { |r| r['content'] }
+    assert_include contents, "Hello Mastodon"
+    assert_include contents, "Hello Twitter"
+  end
+
+  def test_custom_schema_source_column_mapped
+    tool = ChiebukuroMcp::SemanticSearchTool.new(@db_path, embedder: @stub_embedder, sem_cfg: @sem_cfg)
+    result = tool.call(query: 'Hello')
+    parsed = JSON.parse(result)
+    sources = parsed.map { |r| r['source'] }
+    assert_include sources, "mastodol.jp"
+    assert_include sources, "twitter:bash0C7"
+  end
+end
+
 class TestSchemaResourceWithoutMeta < Test::Unit::TestCase
   def setup
     @tmpfile = Tempfile.new(['test_schema_resource_no_meta', '.db'])

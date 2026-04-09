@@ -43,7 +43,7 @@ module ChiebukuroMcp
         tools << query_tool_class
 
         if sem_cfg
-          sem_tool_obj = SemanticSearchTool.new(path, embedder: @embedder)
+          sem_tool_obj = SemanticSearchTool.new(path, embedder: @embedder, sem_cfg: sem_cfg)
           sem_tool_class = MCP::Tool.define(
             name: "chiebukuro_semantic_search_#{db_name}",
             description: "【chiebukuro 知恵袋】#{db_name} DBへの意味検索（768次元 ruri-v3 ベクトル）。#{desc}",
