@@ -29,6 +29,18 @@ module ChiebukuroMcp
       raise ArgumentError, 'server_context is required' unless server_context
 
       meta = MetaReader.read_all(@db_path)
+
+      # Graceful degradation: if this DB has no pre-defined recipes, skip elicitation
+      # and tell the caller to drive plain query/semantic_search tools themselves.
+      if meta[:recipes].nil? || meta[:recipes].empty?
+        return JSON.generate(
+          action: 'fallback',
+          message: 'no pre-defined recipe for this DB. ' \
+                   'Inspect schema:// resource and use chiebukuro_query_<db_name> ' \
+                   'or chiebukuro_semantic_search_<db_name> directly.'
+        )
+      end
+
       analysis = @analyzer.analyze(intent)
       schema = @form_builder.build(analysis.missing_fields, analysis.resolved_hints, meta[:hints])
 

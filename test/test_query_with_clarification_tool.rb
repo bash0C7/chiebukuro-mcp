@@ -1,5 +1,6 @@
 require_relative 'test_helper'
 require_relative '../lib/chiebukuro_mcp/query_with_clarification_tool'
+require_relative '../lib/chiebukuro_mcp/server'
 require 'tempfile'
 require 'json'
 
@@ -117,6 +118,30 @@ class TestQueryWithClarificationTool < Test::Unit::TestCase
     result = tool.call(intent: '最新記事', server_context: ctx)
     parsed = JSON.parse(result)
     assert_match(/SELECT/, parsed['sql'])
+  end
+
+  def test_fallback_when_recipes_empty
+    require 'tempfile'
+    file = Tempfile.new(['empty_db', '.sqlite3'])
+    file.close
+    db = SQLite3::Database.new(file.path)
+    db.execute('CREATE TABLE noop (id INTEGER)')
+    db.close
+    db_path = file.path
+
+    tool = ChiebukuroMcp::QueryWithClarificationTool.new(
+      db_path,
+      field_definitions: ChiebukuroMcp::Server::DEFAULT_CLARIFICATION_FIELDS
+    )
+    fake_ctx = Object.new
+    def fake_ctx.create_elicitation(**_); raise 'should not elicit'; end
+
+    result_json = tool.call(intent: 'find something', server_context: fake_ctx)
+    result = JSON.parse(result_json)
+
+    assert_equal 'fallback', result['action']
+    assert_match(/no pre-defined recipe/, result['message'])
+    assert_match(/chiebukuro_query_/, result['message'])
   end
 
   # Regression: when a field is resolved from the intent (e.g. source_like
