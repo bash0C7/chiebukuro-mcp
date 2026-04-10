@@ -41,7 +41,11 @@ module ChiebukuroMcp
       case action
       when 'accept'
         content = normalize_content(response[:content] || response['content'])
-        execute_query(intent, content, meta[:recipes])
+        # Fields that were resolved from the intent (skip_if_resolved) never
+        # appear in the form payload; fold them in so the SQL template has
+        # every slot. User-supplied form values win over resolved defaults.
+        merged = analysis.resolved_hints.merge(content)
+        execute_query(intent, merged, meta[:recipes])
       when 'decline'
         JSON.generate(action: 'decline', message: 'clarification declined by user. no query executed.')
       when 'cancel'

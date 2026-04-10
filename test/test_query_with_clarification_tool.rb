@@ -118,4 +118,39 @@ class TestQueryWithClarificationTool < Test::Unit::TestCase
     parsed = JSON.parse(result)
     assert_match(/SELECT/, parsed['sql'])
   end
+
+  # Regression: when a field is resolved from the intent (e.g. source_like
+  # from "CRuby"), the tool must merge resolved_hints into the accept
+  # content before calling SqlTemplateEngine, otherwise the slot will be
+  # missing from the form payload and substitution raises ArgumentError.
+  def test_accept_merges_resolved_hints_into_final_content
+    keyword_fields = [
+      { name: :source_like, type: :string,  required: true, description: 'source pattern',
+        keywords: { 'CRuby' => 'ruby/ruby:trunk/%' } },
+      { name: :from_date,   type: :date,    required: true, description: 'start' },
+      { name: :to_date,     type: :date,    required: true, description: 'end' },
+      { name: :limit,       type: :integer, required: true, description: 'limit' }
+    ]
+    tool = ChiebukuroMcp::QueryWithClarificationTool.new(@db_path, field_definitions: keyword_fields)
+
+    # source_like is resolved from intent and therefore NOT in elicitation_content.
+    ctx = FakeServerContext.new(
+      elicitation: :supported,
+      elicitation_content: {
+        from_date: '2020-01-01',
+        to_date: '2099-12-31',
+        limit: 10
+      }
+    )
+
+    result = tool.call(intent: 'CRubyのtrunk変更記事', server_context: ctx)
+    parsed = JSON.parse(result)
+    assert_equal 'accept', parsed['action']
+    assert parsed.key?('rows')
+    assert_includes parsed['params'], 'ruby/ruby:trunk/%'
+
+    # The elicitation form should have skipped the resolved field entirely.
+    form_schema = ctx.last_elicitation_call[:requested_schema]
+    refute form_schema[:properties].key?(:source_like), 'resolved field must be skipped from form'
+  end
 end

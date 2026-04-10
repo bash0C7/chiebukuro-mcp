@@ -107,10 +107,10 @@ DB が自己記述するためのメタテーブル。後方互換のため旧�
 
 | 列 | 型 | 用途 |
 |---|---|---|
-| `object_type` | TEXT | `'db'` / `'table'` / `'column'` / `'recipe'` |
-| `object_name` | TEXT | 対象名。column は `'table.column'`、recipe は一意ラベル |
+| `object_type` | TEXT | `'db'` / `'table'` / `'column'` / `'recipe'` / `'clarification_field'` |
+| `object_name` | TEXT | 対象名。column は `'table.column'`、recipe は一意ラベル、clarification_field は slot 名 |
 | `description` | TEXT | 人間向け説明 |
-| `hints_json` | TEXT | column 用。`{enum_values, sample_values, related_tables, note}` を JSON で |
+| `hints_json` | TEXT | column / clarification_field で使用。column は `{enum_values, sample_values, related_tables, note}`。clarification_field は `{type, required, order, keywords, enum_values, default}` を JSON で |
 | `recipe_sql` | TEXT | recipe 用。SELECT/WITH テンプレート本文（named placeholder `:key` 使用可） |
 | `recipe_label` | TEXT | recipe 用。人間向けラベル |
 
