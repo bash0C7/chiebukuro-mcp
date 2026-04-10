@@ -14,7 +14,14 @@
       "Bash(gh issue:*)",
       "Bash(gh pr:*)",
       "mcp__esa__esa_update_post",
-      "WebFetch(domain:retrospective.hatenadiary.com)"
+      "WebFetch(domain:retrospective.hatenadiary.com)",
+      "Read(//tmp/**)",
+      "Bash(sqlite3:*)",
+      "Read(//private/tmp/**)",
+      "Bash(rm -f verify_003.db)",
+      "Bash(rm /tmp/verify_003.db)",
+      "Bash(rm -f verify_b1.db)",
+      "Bash(rm /tmp/verify_b1.db)"
     ]
   }
 }
