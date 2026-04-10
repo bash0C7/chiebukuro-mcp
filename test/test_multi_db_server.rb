@@ -2,6 +2,7 @@ require_relative 'test_helper'
 require_relative '../lib/chiebukuro_mcp/server'
 require 'tempfile'
 require 'json'
+require 'stringio'
 
 class TestMultiDbServer < Test::Unit::TestCase
   def setup
@@ -164,5 +165,34 @@ class TestMultiDbServer < Test::Unit::TestCase
     mcp = server.build_mcp_server
     tool_class = mcp.tool_classes.find { |t| t.tool_name == 'chiebukuro_query_db_one' }
     assert_include tool_class.description, 'First test DB'
+  end
+
+  def test_warns_when_db_has_no_recipes_and_no_clarification_fields
+    tmp = Tempfile.new(['empty_db', '.sqlite3'])
+    empty_path = tmp.path
+    tmp.close
+    db = SQLite3::Database.new(empty_path)
+    db.execute('CREATE TABLE noop (id INTEGER)')
+    db.close
+
+    config = { 'databases' => { 'empty_db' => { 'path' => empty_path, 'description' => 'x' } } }
+    server = ChiebukuroMcp::Server.new(config: config, embedder: @embedder)
+
+    captured = capture_stderr { server.build_mcp_server }
+
+    assert_match(/empty_db.*no recipes.*clarification_fields/, captured)
+  ensure
+    tmp&.unlink
+  end
+
+  private
+
+  def capture_stderr
+    original = $stderr
+    $stderr = StringIO.new
+    yield
+    $stderr.string
+  ensure
+    $stderr = original
   end
 end

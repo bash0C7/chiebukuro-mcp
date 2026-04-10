@@ -48,6 +48,18 @@ module ChiebukuroMcp
         desc    = db_config["description"]     || db_config[:description] || ""
         sem_cfg = db_config["semantic_search"] || db_config[:semantic_search]
 
+        meta_preview = begin
+          MetaReader.read_all(path)
+        rescue => e
+          warn "[chiebukuro-mcp] #{db_name}: failed to read meta at startup: #{e.message}"
+          { recipes: [], clarification_fields: [] }
+        end
+
+        if meta_preview[:recipes].empty? && meta_preview[:clarification_fields].empty?
+          warn "[chiebukuro-mcp] #{db_name}: no recipes and no clarification_fields in _sqlite_mcp_meta — " \
+               "query_with_clarification will fall back to generic guidance"
+        end
+
         query_tool_obj = QueryTool.new(path)
         query_tool_class = MCP::Tool.define(
           name: "chiebukuro_query_#{db_name}",
