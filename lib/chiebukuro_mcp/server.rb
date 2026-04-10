@@ -57,7 +57,9 @@ module ChiebukuroMcp
 
         if meta_preview[:recipes].empty? && meta_preview[:clarification_fields].empty?
           warn "[chiebukuro-mcp] #{db_name}: no recipes and no clarification_fields in _sqlite_mcp_meta — " \
-               "query_with_clarification will fall back to generic guidance"
+               "query_with_clarification will fall back to generic guidance. " \
+               "Add 'recipe' or 'clarification_field' rows to _sqlite_mcp_meta " \
+               "(e.g. via dotfiles/chiebukuro-mcp/scripts/meta_patches/<db>.yml + apply_meta_patches.rb)."
         end
 
         query_tool_obj = QueryTool.new(path)
