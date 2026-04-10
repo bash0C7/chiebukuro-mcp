@@ -8,6 +8,7 @@ require_relative 'recipes_resource'
 require_relative 'hints_resource'
 require_relative 'explain_query_tool'
 require_relative 'query_with_clarification_tool'
+require_relative 'meta_reader'
 
 module ChiebukuroMcp
   class Server
@@ -21,6 +22,20 @@ module ChiebukuroMcp
     def initialize(config:, embedder:)
       @databases = config["databases"] || config[:databases]
       @embedder  = embedder
+    end
+
+    # DB 側の _sqlite_mcp_meta に clarification_field 行があればそれを使い、
+    # なければ DEFAULT_CLARIFICATION_FIELDS にフォールバックする。
+    # DB 自己記述の原則を守りつつ、未対応 DB でも動作を保つ。
+    def clarification_fields_for(db_path)
+      meta = MetaReader.read_all(db_path)
+      fields = meta[:clarification_fields]
+      return DEFAULT_CLARIFICATION_FIELDS if fields.nil? || fields.empty?
+
+      fields
+    rescue => e
+      warn "[chiebukuro-mcp] failed to read clarification_fields from #{db_path}: #{e.message}"
+      DEFAULT_CLARIFICATION_FIELDS
     end
 
     def build_mcp_server
@@ -128,7 +143,8 @@ module ChiebukuroMcp
         end
         tools << explain_tool_class
 
-        clarify_tool_obj = QueryWithClarificationTool.new(path, field_definitions: DEFAULT_CLARIFICATION_FIELDS)
+        clarify_fields = clarification_fields_for(path)
+        clarify_tool_obj = QueryWithClarificationTool.new(path, field_definitions: clarify_fields)
         clarify_tool_class = MCP::Tool.define(
           name: "chiebukuro_query_with_clarification_#{db_name}",
           description: "【chiebukuro 知恵袋】#{db_name} DBへの対話型クエリ。曖昧な要求を elicitation で期間・ソース・件数に分解してユーザーに確認してから SELECT を実行する。#{desc}",

@@ -16,7 +16,7 @@ module ChiebukuroMcp
   # 旧スキーマ（hints_json / recipe_sql / recipe_label 列が無い DB）でも
   # 例外を投げずに空の結果を返す。
   class MetaReader
-    EMPTY_RESULT = { descriptions: {}, hints: {}, recipes: [] }.freeze
+    EMPTY_RESULT = { descriptions: {}, hints: {}, recipes: [], clarification_fields: [] }.freeze
 
     def self.read_all(db_path)
       db = open_db(db_path)
@@ -36,6 +36,7 @@ module ChiebukuroMcp
       descriptions = {}
       hints = {}
       recipes = []
+      clarification_fields_raw = []
 
       rows.each do |row|
         type = row['object_type']
@@ -44,8 +45,8 @@ module ChiebukuroMcp
         descriptions[key] = row['description'] if row['description']
 
         if type == 'column' && has_hints_json && row['hints_json']
-          parsed = safe_parse_json(row['hints_json'])
-          hints[key] = parsed if parsed
+          parsed = safe_parse_json_preserve_keys(row['hints_json'])
+          hints[key] = symbolize_top_level(parsed) if parsed
         end
 
         if type == 'recipe' && has_recipe_sql && row['recipe_sql']
@@ -56,11 +57,41 @@ module ChiebukuroMcp
             sql: row['recipe_sql']
           }
         end
+
+        if type == 'clarification_field' && has_hints_json && row['hints_json']
+          parsed = safe_parse_json_preserve_keys(row['hints_json'])
+          clarification_fields_raw << [name, row['description'], parsed] if parsed
+        end
       end
 
-      { descriptions: descriptions, hints: hints, recipes: recipes }
+      clarification_fields = build_clarification_fields(clarification_fields_raw)
+
+      {
+        descriptions: descriptions,
+        hints: hints,
+        recipes: recipes,
+        clarification_fields: clarification_fields
+      }
     ensure
       db&.close
+    end
+
+    # clarification_field の hints_json を Hash 化して field 定義配列に変換。
+    # order 属性で昇順ソートし、type を Symbol に、required/keywords/enum_values 等を抽出する。
+    def self.build_clarification_fields(raw)
+      raw
+        .sort_by { |(_, _, attrs)| attrs['order'] || 0 }
+        .map do |(name, description, attrs)|
+          {
+            name: name.to_sym,
+            description: description,
+            type: (attrs['type'] || 'string').to_sym,
+            required: attrs.fetch('required', true),
+            keywords: attrs['keywords'],
+            enum_values: attrs['enum_values'],
+            default: attrs['default']
+          }.compact
+        end
     end
 
     def self.open_db(db_path)
@@ -87,6 +118,19 @@ module ChiebukuroMcp
       parsed.each_with_object({}) { |(k, v), h| h[k.to_sym] = v }
     rescue JSON::ParserError
       nil
+    end
+
+    # キーを String のまま残す版。clarification_field の keywords など、
+    # ユーザー入力のキー（例: "CRuby"）を Symbol 化すると意味を失うケース向け。
+    def self.safe_parse_json_preserve_keys(json_str)
+      parsed = JSON.parse(json_str)
+      parsed.is_a?(Hash) ? parsed : nil
+    rescue JSON::ParserError
+      nil
+    end
+
+    def self.symbolize_top_level(hash)
+      hash.each_with_object({}) { |(k, v), h| h[k.to_sym] = v }
     end
 
     # ----- Instance API -----

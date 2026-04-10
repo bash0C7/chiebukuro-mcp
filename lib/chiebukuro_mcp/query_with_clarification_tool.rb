@@ -18,10 +18,10 @@ module ChiebukuroMcp
   #   6. accept → SqlTemplateEngine で SQL 構築 → DB 実行 → 結果返却
   #   7. decline/cancel → その旨を返す
   class QueryWithClarificationTool
-    def initialize(db_path, field_definitions:)
+    def initialize(db_path, field_definitions:, skip_if_resolved: true)
       @db_path = db_path
       @field_definitions = field_definitions
-      @analyzer = IntentAnalyzer.new(field_definitions)
+      @analyzer = IntentAnalyzer.new(field_definitions, skip_if_resolved: skip_if_resolved)
       @form_builder = ClarificationFormBuilder.new(field_definitions)
     end
 

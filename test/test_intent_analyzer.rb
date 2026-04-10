@@ -42,4 +42,20 @@ class TestIntentAnalyzer < Test::Unit::TestCase
     result = @analyzer.analyze('CRubyの記事')
     assert_equal 4, result.missing_fields.length
   end
+
+  def test_analyze_skip_if_resolved_removes_resolved_from_missing
+    skip_analyzer = ChiebukuroMcp::IntentAnalyzer.new(@field_definitions, skip_if_resolved: true)
+    result = skip_analyzer.analyze('CRubyの記事')
+    refute_includes result.missing_fields, :source
+    assert_includes result.missing_fields, :from_date
+    assert_includes result.missing_fields, :to_date
+    assert_includes result.missing_fields, :limit
+    assert_equal 'ruby/ruby', result.resolved_hints[:source]
+  end
+
+  def test_analyze_skip_if_resolved_without_keyword_match_keeps_all_fields
+    skip_analyzer = ChiebukuroMcp::IntentAnalyzer.new(@field_definitions, skip_if_resolved: true)
+    result = skip_analyzer.analyze('無関係な文字列')
+    assert_equal 4, result.missing_fields.length
+  end
 end

@@ -112,4 +112,52 @@ class TestMetaReader < Test::Unit::TestCase
     reader = ChiebukuroMcp::MetaReader.new(@db_path)
     assert_nil reader.column_meta('memories.unknown')
   end
+
+  # --- clarification_fields ---
+
+  def test_read_all_returns_clarification_fields_key
+    result = ChiebukuroMcp::MetaReader.read_all(@db_path)
+    assert result.key?(:clarification_fields)
+    assert result[:clarification_fields].is_a?(Array)
+  end
+
+  def test_clarification_fields_are_ordered_by_order_attribute
+    result = ChiebukuroMcp::MetaReader.read_all(@db_path)
+    fields = result[:clarification_fields]
+    names = fields.map { |f| f[:name] }
+    assert_equal [:source_like, :from_date, :to_date, :limit], names
+  end
+
+  def test_clarification_field_parses_required_and_type
+    result = ChiebukuroMcp::MetaReader.read_all(@db_path)
+    source_field = result[:clarification_fields].find { |f| f[:name] == :source_like }
+    assert_equal :string, source_field[:type]
+    assert_equal true, source_field[:required]
+  end
+
+  def test_clarification_field_parses_keywords_map
+    result = ChiebukuroMcp::MetaReader.read_all(@db_path)
+    source_field = result[:clarification_fields].find { |f| f[:name] == :source_like }
+    assert_equal 'ruby/ruby:trunk/%', source_field[:keywords]['CRuby']
+    assert_equal 'picoruby/picoruby:trunk/%', source_field[:keywords]['PicoRuby']
+  end
+
+  def test_clarification_field_carries_description
+    result = ChiebukuroMcp::MetaReader.read_all(@db_path)
+    from_field = result[:clarification_fields].find { |f| f[:name] == :from_date }
+    assert_match(/開始日/, from_field[:description])
+  end
+
+  def test_clarification_fields_empty_on_old_schema
+    tmp = Tempfile.new(['old2', '.db'])
+    old_path = tmp.path
+    tmp.close
+    db = SQLite3::Database.new(old_path)
+    db.execute('CREATE TABLE _sqlite_mcp_meta (object_type TEXT, object_name TEXT, description TEXT, PRIMARY KEY(object_type, object_name))')
+    db.close
+    result = ChiebukuroMcp::MetaReader.read_all(old_path)
+    assert_equal [], result[:clarification_fields]
+  ensure
+    tmp&.unlink
+  end
 end

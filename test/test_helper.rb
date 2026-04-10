@@ -122,7 +122,23 @@ module TestDbHelper
        'trunkの最新記事をcreated_at降順で取得する',
        NULL,
        'SELECT content, source, created_at FROM memories WHERE source LIKE :source_like AND created_at BETWEEN :from_date AND :to_date ORDER BY created_at DESC LIMIT :limit',
-       '最新記事');
+       '最新記事'),
+      ('clarification_field', 'source_like',
+       'どの派生Rubyのtrunk変更記事を見るか',
+       '{"type":"string","required":true,"order":1,"keywords":{"CRuby":"ruby/ruby:trunk/%","PicoRuby":"picoruby/picoruby:trunk/%","mruby":"mruby/mruby:trunk/%"},"enum_values":["ruby/ruby:trunk/%","picoruby/picoruby:trunk/%","mruby/mruby:trunk/%"]}',
+       NULL, NULL),
+      ('clarification_field', 'from_date',
+       '期間の開始日 (YYYY-MM-DD)',
+       '{"type":"date","required":true,"order":2}',
+       NULL, NULL),
+      ('clarification_field', 'to_date',
+       '期間の終了日 (YYYY-MM-DD)',
+       '{"type":"date","required":true,"order":3}',
+       NULL, NULL),
+      ('clarification_field', 'limit',
+       '最大件数 (1-100 程度)',
+       '{"type":"integer","required":true,"order":4}',
+       NULL, NULL);
   SQL
 
   def self.setup_db(db_path)

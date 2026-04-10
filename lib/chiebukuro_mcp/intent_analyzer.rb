@@ -8,8 +8,9 @@ module ChiebukuroMcp
   class IntentAnalyzer
     Result = Struct.new(:missing_fields, :resolved_hints)
 
-    def initialize(field_definitions)
+    def initialize(field_definitions, skip_if_resolved: false)
       @fields = field_definitions
+      @skip_if_resolved = skip_if_resolved
     end
 
     def analyze(intent)
@@ -22,12 +23,14 @@ module ChiebukuroMcp
         next unless kw_map
 
         kw_map.each do |keyword, value|
-          if text.include?(keyword.downcase)
+          if text.include?(keyword.to_s.downcase)
             resolved[field[:name]] = value
             break
           end
         end
       end
+
+      missing = missing.reject { |name| resolved.key?(name) } if @skip_if_resolved
 
       Result.new(missing, resolved)
     end

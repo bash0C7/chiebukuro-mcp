@@ -52,6 +52,15 @@ module ChiebukuroMcp
     end
 
     def string_property(base, field, meta_hints)
+      # Priority 1: enum_values directly on the field definition
+      #   (clarification_field rows from _sqlite_mcp_meta carry these).
+      if field[:enum_values] && !field[:enum_values].empty?
+        one_of = field[:enum_values].map { |v| { const: v, title: v } }
+        return base.merge(type: 'string', oneOf: one_of)
+      end
+
+      # Priority 2: meta_hint_key pointing at a column hint entry
+      #   (used when the clarification field is semantically bound to a column).
       hint_key = field[:meta_hint_key]
       if hint_key
         hints = meta_hints["column:#{hint_key}"]
@@ -60,6 +69,7 @@ module ChiebukuroMcp
           return base.merge(type: 'string', oneOf: one_of)
         end
       end
+
       base.merge(type: 'string')
     end
   end

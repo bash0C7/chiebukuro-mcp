@@ -86,6 +86,35 @@ class TestMultiDbServer < Test::Unit::TestCase
     assert_include tool_names, 'chiebukuro_query_with_clarification_db_two'
   end
 
+  def test_clarification_fields_loaded_from_db_meta
+    server = ChiebukuroMcp::Server.new(config: @config, embedder: @embedder)
+    fields = server.clarification_fields_for(@db1_path)
+    names = fields.map { |f| f[:name] }
+    assert_includes names, :source_like
+    assert_includes names, :from_date
+    assert_includes names, :to_date
+    assert_includes names, :limit
+
+    source_field = fields.find { |f| f[:name] == :source_like }
+    assert_equal 'ruby/ruby:trunk/%', source_field[:keywords]['CRuby']
+    assert_includes source_field[:enum_values], 'picoruby/picoruby:trunk/%'
+  end
+
+  def test_clarification_fields_fallback_to_default_when_db_has_no_meta
+    tmp = Tempfile.new(['empty', '.db'])
+    empty_path = tmp.path
+    tmp.close
+    db = SQLite3::Database.new(empty_path)
+    db.execute('CREATE TABLE irrelevant(x)')
+    db.close
+
+    server = ChiebukuroMcp::Server.new(config: @config, embedder: @embedder)
+    fields = server.clarification_fields_for(empty_path)
+    assert_equal ChiebukuroMcp::Server::DEFAULT_CLARIFICATION_FIELDS, fields
+  ensure
+    tmp&.unlink
+  end
+
   def test_query_tools_created_for_each_db
     server = ChiebukuroMcp::Server.new(config: @config, embedder: @embedder)
     mcp = server.build_mcp_server
