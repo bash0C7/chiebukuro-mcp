@@ -54,6 +54,38 @@ class TestMultiDbServer < Test::Unit::TestCase
     assert_include tool_names, 'chiebukuro_probe_capabilities'
   end
 
+  def test_recipes_resources_created_for_each_db
+    server = ChiebukuroMcp::Server.new(config: @config, embedder: @embedder)
+    mcp = server.build_mcp_server
+    uris = mcp.resource_list.map(&:uri)
+    assert_include uris, 'recipes://db_one'
+    assert_include uris, 'recipes://db_two'
+  end
+
+  def test_hints_resources_created_for_each_db
+    server = ChiebukuroMcp::Server.new(config: @config, embedder: @embedder)
+    mcp = server.build_mcp_server
+    uris = mcp.resource_list.map(&:uri)
+    assert_include uris, 'hints://db_one'
+    assert_include uris, 'hints://db_two'
+  end
+
+  def test_explain_query_tools_created_for_each_db
+    server = ChiebukuroMcp::Server.new(config: @config, embedder: @embedder)
+    mcp = server.build_mcp_server
+    tool_names = mcp.tool_classes.map(&:tool_name)
+    assert_include tool_names, 'chiebukuro_explain_query_db_one'
+    assert_include tool_names, 'chiebukuro_explain_query_db_two'
+  end
+
+  def test_query_with_clarification_tools_created_for_each_db
+    server = ChiebukuroMcp::Server.new(config: @config, embedder: @embedder)
+    mcp = server.build_mcp_server
+    tool_names = mcp.tool_classes.map(&:tool_name)
+    assert_include tool_names, 'chiebukuro_query_with_clarification_db_one'
+    assert_include tool_names, 'chiebukuro_query_with_clarification_db_two'
+  end
+
   def test_query_tools_created_for_each_db
     server = ChiebukuroMcp::Server.new(config: @config, embedder: @embedder)
     mcp = server.build_mcp_server
