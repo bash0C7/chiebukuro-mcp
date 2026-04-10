@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:careers.mercari.com)",
+      "Read(//Users/bash/dev/src/github.com/modelcontextprotocol/ruby-sdk/**)",
+      "Bash(head -100 CONTRIBUTING.md)",
+      "mcp__chiebukuro-mcp__chiebukuro_probe_capabilities",
+      "mcp__chiebukuro-mcp__chiebukuro_explain_query_ruby_knowledge",
+      "mcp__chiebukuro-mcp__chiebukuro_query_with_clarification_ruby_knowledge",
+      "mcp__chiebukuro-mcp__chiebukuro_query_ruby_knowledge",
+      "Bash(ruby scripts/apply_meta_patches.rb ruby_knowledge)",
+      "mcp__chiebukuro-mcp__chiebukuro_query_blog",
+      "mcp__esa__esa_create_post",
+      "Bash(gh issue:*)",
+      "Bash(gh pr:*)",
+      "mcp__esa__esa_update_post"
+    ]
+  }
+}
