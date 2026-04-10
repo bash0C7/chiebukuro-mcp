@@ -3,6 +3,12 @@ PATH
   specs:
     chiebukuro_mcp (0.1.0)
 
+PATH
+  remote: /Users/bash/dev/src/github.com/modelcontextprotocol/ruby-sdk
+  specs:
+    mcp (0.11.0)
+      json-schema (>= 4.1)
+
 GEM
   remote: https://rubygems.org/
   specs:
@@ -19,8 +25,6 @@ GEM
     json-schema (6.2.0)
       addressable (~> 2.8)
       bigdecimal (>= 3.1, < 5)
-    mcp (0.10.0)
-      json-schema (>= 4.1)
     onnxruntime (0.11.1-arm64-darwin)
       ffi
     onnxruntime (0.11.1-x86_64-darwin)
@@ -54,7 +58,7 @@ PLATFORMS
 DEPENDENCIES
   chiebukuro_mcp!
   informers
-  mcp
+  mcp!
   rake
   sqlite-vec
   sqlite3
@@ -70,7 +74,7 @@ CHECKSUMS
   ffi (1.17.4-x86_64-linux-musl) sha256=3fdf9888483de005f8ef8d1cf2d3b20d86626af206cbf780f6a6a12439a9c49e
   informers (1.2.1) sha256=f686f745f640333b9cbfbb380fcdd62d48cff78b8fd9f33ec2dfed1b5d1ecf6e
   json-schema (6.2.0) sha256=e8bff46ed845a22c1ab2bd0d7eccf831c01fe23bb3920caa4c74db4306813666
-  mcp (0.10.0) sha256=09b9231eb16dff75cc7b8a95817c8acfcf4d1cab8d34f350671e43e765242b57
+  mcp (0.11.0)
   onnxruntime (0.11.1-arm64-darwin) sha256=6d205e1adfcb77f0330b46ea9dcd3da9199034408dd5f58d56afca8e70fb686c
   onnxruntime (0.11.1-x86_64-darwin) sha256=acdcbfbc937273fb27fd98587fde18199bb03dcd525f2da5324da42c97631eb9
   onnxruntime (0.11.1-x86_64-linux) sha256=90a47c9ab70103cdd4dd2b99b5179dfed909b44ceb77a1cf076e9dcff925079c
