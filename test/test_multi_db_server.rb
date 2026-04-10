@@ -47,6 +47,13 @@ class TestMultiDbServer < Test::Unit::TestCase
     assert_not_nil mcp
   end
 
+  def test_probe_capabilities_tool_registered
+    server = ChiebukuroMcp::Server.new(config: @config, embedder: @embedder)
+    mcp = server.build_mcp_server
+    tool_names = mcp.tool_classes.map(&:tool_name)
+    assert_include tool_names, 'chiebukuro_probe_capabilities'
+  end
+
   def test_query_tools_created_for_each_db
     server = ChiebukuroMcp::Server.new(config: @config, embedder: @embedder)
     mcp = server.build_mcp_server

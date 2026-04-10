@@ -3,6 +3,7 @@ require 'mcp/server/transports/stdio_transport'
 require_relative 'query_tool'
 require_relative 'schema_resource'
 require_relative 'semantic_search_tool'
+require_relative 'probe_tool'
 
 module ChiebukuroMcp
   class Server
@@ -75,6 +76,19 @@ module ChiebukuroMcp
         )
         resource_handlers[schema_uri] = schema_res_obj
       end
+
+      probe_tool_obj = ProbeTool.new
+      probe_tool_class = MCP::Tool.define(
+        name: 'chiebukuro_probe_capabilities',
+        description: '【chiebukuro 知恵袋】MCP ホストが sampling と elicitation の capability を宣言しているか実地で確認する実証ツール。引数なし。',
+        input_schema: { type: 'object', properties: {} }
+      ) do |server_context: nil, **_|
+        result = probe_tool_obj.call(server_context: server_context)
+        MCP::Tool::Response.new([{ type: 'text', text: result }])
+      rescue => e
+        MCP::Tool::Response.new([{ type: 'text', text: e.message }], error: true)
+      end
+      tools << probe_tool_class
 
       mcp_server = MCP::Server.new(
         name:      'chiebukuro-mcp',
