@@ -2,35 +2,6 @@ require_relative 'test_helper'
 require_relative '../lib/chiebukuro_mcp/probe_tool'
 require 'json'
 
-# Fake server_context that simulates the MCP::ServerContext interface used by ProbeTool.
-# Each constructor flag controls whether the corresponding feature appears supported.
-class FakeServerContext
-  def initialize(sampling: :supported, elicitation: :supported)
-    @sampling = sampling
-    @elicitation = elicitation
-  end
-
-  def create_sampling_message(**_kwargs)
-    case @sampling
-    when :supported
-      { role: 'assistant', content: { type: 'text', text: 'pong' }, model: 'fake' }
-    when :unsupported
-      raise 'Client does not support sampling.'
-    end
-  end
-
-  def create_elicitation(**_kwargs)
-    case @elicitation
-    when :supported
-      { action: 'accept', content: { ack: true } }
-    when :declined
-      { action: 'decline' }
-    when :unsupported
-      raise 'Client does not support elicitation.'
-    end
-  end
-end
-
 class TestProbeTool < Test::Unit::TestCase
   def test_reports_both_supported
     tool = ChiebukuroMcp::ProbeTool.new

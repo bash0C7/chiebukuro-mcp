@@ -1,6 +1,6 @@
 require 'sqlite3'
 require 'sqlite_vec'
-require 'json'
+require_relative 'meta_reader'
 
 module ChiebukuroMcp
   class SchemaResource
@@ -9,10 +9,10 @@ module ChiebukuroMcp
     end
 
     def call
+      meta = MetaReader.read_all(@db_path)
       db = open_db
-      meta = read_meta(db)
       tables = read_tables(db)
-      build_schema(meta, tables)
+      build_schema(meta[:descriptions], tables)
     ensure
       db&.close
     end
@@ -28,43 +28,36 @@ module ChiebukuroMcp
       db
     end
 
-    def read_meta(db)
-      has_meta = db.execute(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='_sqlite_mcp_meta'"
-      ).any?
-      return {} unless has_meta
-
-      db.execute('SELECT object_type, object_name, description FROM _sqlite_mcp_meta')
-        .each_with_object({}) do |row, h|
-          h["#{row['object_type']}:#{row['object_name']}"] = row['description']
-        end
-    end
-
     def read_tables(db)
       db.execute(
         "SELECT name, sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
       )
     end
 
-    def build_schema(meta, tables)
+    def build_schema(descriptions, tables)
       lines = []
-      db_desc = meta['db:ruby_knowledge'] || meta.values.first
-      lines << "# Database Schema"
+      db_desc = descriptions['db:ruby_knowledge'] || first_db_description(descriptions)
+      lines << '# Database Schema'
       lines << "## Description: #{db_desc}" if db_desc
-      lines << ""
+      lines << ''
 
       tables.each do |t|
         name = t['name']
         lines << "## Table: #{name}"
-        desc = meta["table:#{name}"]
+        desc = descriptions["table:#{name}"]
         lines << "Description: #{desc}" if desc
-        lines << "```sql"
+        lines << '```sql'
         lines << t['sql']
-        lines << "```"
-        lines << ""
+        lines << '```'
+        lines << ''
       end
 
       lines.join("\n")
+    end
+
+    def first_db_description(descriptions)
+      key = descriptions.keys.find { |k| k.start_with?('db:') }
+      key ? descriptions[key] : nil
     end
   end
 end
