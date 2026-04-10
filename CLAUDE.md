@@ -53,14 +53,44 @@ Claude Code セッション内で動く限り、ホスト LLM は常にそこに
 
 ## 主要クラス
 
+### 基盤
+
 | クラス | 役割 |
 |--------|------|
 | `ChiebukuroMcp::Server` | config を受け取り MCP ツール・リソースを構築。`run` でstdio起動 |
-| `ChiebukuroMcp::QueryTool` | SELECT/WITH のみ許可。INSERT/UPDATE/DELETE/DROP は ArgumentError |
-| `ChiebukuroMcp::SemanticSearchTool` | vec0 KNN 検索。デフォルト limit 5 |
-| `ChiebukuroMcp::SchemaResource` | DB スキーマ + `_sqlite_mcp_meta` 説明文を返す |
+| `ChiebukuroMcp::MetaReader` | `_sqlite_mcp_meta` 読み取りの単一窓口。descriptions / hints / recipes を統一 API で返す。旧スキーマ DB にも例外なく対応 |
 | `ChiebukuroMcp::Inspector` | DBを解析して `suggested_config` を生成（`inspect` サブコマンド用） |
 | `ChiebukuroMcp::Embedder` | `informers` gem で `ruri-v3-310m-onnx` をラップ。768次元ベクトルを生成（`serve` サブコマンド用） |
+
+### データ読み取りツール
+
+| クラス | 役割 |
+|--------|------|
+| `ChiebukuroMcp::QueryTool` | SELECT/WITH のみ許可。INSERT/UPDATE/DELETE/DROP は ArgumentError |
+| `ChiebukuroMcp::SemanticSearchTool` | vec0 KNN 検索。デフォルト limit 5 |
+| `ChiebukuroMcp::ExplainQueryTool` | `EXPLAIN QUERY PLAN` を実行して返す読み取り専用ツール。SELECT/WITH 以外は拒否 |
+
+### 知識リソース
+
+| クラス | 役割 |
+|--------|------|
+| `ChiebukuroMcp::SchemaResource` | `schema://<db>` — DB スキーマ + テーブル/DB description を Markdown で提供 |
+| `ChiebukuroMcp::RecipesResource` | `recipes://<db>` — `_sqlite_mcp_meta` の recipe 行から典型クエリ集を Markdown で提供 |
+| `ChiebukuroMcp::HintsResource` | `hints://<db>` — カラム enum 候補 / サンプル値 / 関連テーブルを Markdown で提供 |
+
+### 対話ツール（elicitation 駆動）
+
+| クラス | 役割 |
+|--------|------|
+| `ChiebukuroMcp::QueryWithClarificationTool` | 曖昧な自然言語要求を受けて、elicitation でユーザーに期間・絞込条件を構造化入力させ、recipe テンプレートに基づいて SELECT を実行するオーケストレーター |
+| `ChiebukuroMcp::IntentAnalyzer` | intent 文字列をキーワードマッチで解析し、未指定フィールドと resolved_hints を返す |
+| `ChiebukuroMcp::ClarificationFormBuilder` | 未指定フィールドと meta_hints から MCP elicitation 用 JSON Schema（form mode 制約準拠）を動的生成 |
+| `ChiebukuroMcp::SqlTemplateEngine` | recipe を intent キーワードで選択し、named placeholder を positional `?` に置換。SELECT/WITH 以外の template は拒否 |
+
+### 実証ツール
+
+| クラス | 役割 |
+|--------|------|
 | `ChiebukuroMcp::ProbeTool` | ホスト LLM の sampling / elicitation capability を実地確認する実証ツール |
 
 ## 設定の流れ
@@ -70,6 +100,21 @@ chiebukuro.json (環境依存) → Server.new(config:, embedder:) → build_mcp_
 ```
 
 `config` は `databases` キーを持つ Hash（または JSON.parse 結果）。
+
+## `_sqlite_mcp_meta` 拡張スキーマ
+
+DB が自己記述するためのメタテーブル。後方互換のため旧スキーマ（3列のみ）でも動作する。
+
+| 列 | 型 | 用途 |
+|---|---|---|
+| `object_type` | TEXT | `'db'` / `'table'` / `'column'` / `'recipe'` |
+| `object_name` | TEXT | 対象名。column は `'table.column'`、recipe は一意ラベル |
+| `description` | TEXT | 人間向け説明 |
+| `hints_json` | TEXT | column 用。`{enum_values, sample_values, related_tables, note}` を JSON で |
+| `recipe_sql` | TEXT | recipe 用。SELECT/WITH テンプレート本文（named placeholder `:key` 使用可） |
+| `recipe_label` | TEXT | recipe 用。人間向けラベル |
+
+追加列は全て NULLABLE。旧 DB で列自体が存在しない場合、MetaReader が例外を握りつぶして空値を返す。
 
 ## テスト
 
