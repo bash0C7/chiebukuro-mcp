@@ -67,6 +67,45 @@ The server is launched via `scripts/start_mcp.sh`, which explicitly uses rbenv's
 
 `~/chiebukuro-mcp/chiebukuro.json` must exist before starting — see **Configuration** section above for the format. Keep it in your dotfiles, not this repo.
 
+## Agent-ready MCP surface
+
+For each configured DB the server now exposes, in addition to `chiebukuro_query_<db>` and `chiebukuro_semantic_search_<db>`:
+
+- `chiebukuro_explain_query_<db>` — runs `EXPLAIN QUERY PLAN` against a read-only SELECT.
+- `chiebukuro_query_with_clarification_<db>` — natural-language intent driven. Uses MCP elicitation to fill slots, then executes a recipe template. Falls back to plain-query guidance if the DB has no recipes.
+- `schema://<db>` — Markdown description of tables and columns.
+- `recipes://<db>` — Markdown catalogue of recipe query templates with interpretation notes.
+- `hints://<db>` — Markdown catalogue of column enum values / sample values / note rules.
+
+Plus one global tool:
+
+- `chiebukuro_probe_capabilities` — reports whether the connected MCP host declared `sampling` and `elicitation` capabilities.
+
+## `_sqlite_mcp_meta` extended schema
+
+Each DB can self-describe itself. `_sqlite_mcp_meta` has these columns:
+
+| Column | Used by | Purpose |
+| --- | --- | --- |
+| `object_type` | all | `'db'` / `'table'` / `'column'` / `'recipe'` / `'clarification_field'` |
+| `object_name` | all | target name (columns use `'table.column'`, recipes/slots use a label) |
+| `description` | all | human-readable text |
+| `hints_json` | `column`, `clarification_field` | JSON with `enum_values`, `sample_values`, `related_tables`, `note`, or slot attributes |
+| `recipe_sql` | `recipe` | SELECT/WITH template, named placeholders `:key` allowed |
+| `recipe_label` | `recipe` | short display label |
+
+Older DBs with only the 3-column (`object_type`, `object_name`, `description`) table keep working; `MetaReader` silently returns empty recipes/hints for them.
+
+## Graceful degradation
+
+If a DB has no recipes and no clarification_fields, the server:
+
+1. Logs a startup warning to stderr.
+2. Still registers all tools and resources.
+3. `query_with_clarification` short-circuits and returns a `fallback` action telling the caller to drive `chiebukuro_query_<db>` / `chiebukuro_semantic_search_<db>` directly, using `schema://<db>` for orientation.
+
+The recipe/hints data itself is managed outside this repo — see `dotfiles/chiebukuro-mcp/scripts/meta_patches/*.yml`.
+
 ## Development
 
 ```bash
