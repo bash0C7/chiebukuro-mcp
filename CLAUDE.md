@@ -93,6 +93,15 @@ Claude Code セッション内で動く限り、ホスト LLM は常にそこに
 |--------|------|
 | `ChiebukuroMcp::ProbeTool` | ホスト LLM の sampling / elicitation capability を実地確認する実証ツール |
 
+## Graceful degradation（meta 欠損時のフォールバック）
+
+DB 側に `_sqlite_mcp_meta` が未整備でも Server は落ちず動作する。具体的には:
+
+- **Server 起動時**: `recipes` と `clarification_fields` が両方空の DB について stderr に WARN を出す。ツール登録は全て行う。
+- **`QueryWithClarificationTool#call`**: `recipes` が空の DB に対しては elicitation を行わず、`action: "fallback"` を返して「`schema://` を参照して `chiebukuro_query_<db>` で直接 SELECT せよ」とガイドする。
+- **`RecipesResource` / `HintsResource`**: 空でもリソースは返る。本文は「このDBにはまだ定義されていない」旨 1 行。
+- **旧 3 列スキーマの DB**: `MetaReader` が PRAGMA で列検出し、新列が無い DB は旧スキーマ扱いで空の recipes/hints を返す。MCP サーバ側の変更なしで後方互換が保たれる。
+
 ## 設定の流れ
 
 ```
