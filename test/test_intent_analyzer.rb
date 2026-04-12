@@ -87,4 +87,45 @@ class TestIntentAnalyzer < Test::Unit::TestCase
     refute_includes result.missing_fields, :limit
     assert_includes result.missing_fields, :source
   end
+
+  # --- field-level default 値サポート ---
+
+  def test_analyze_applies_field_default_when_not_prefilled
+    fields_with_default = [
+      { name: :limit, type: :integer, required: true, default: 50 }
+    ]
+    analyzer = ChiebukuroMcp::IntentAnalyzer.new(fields_with_default, skip_if_resolved: true)
+    result = analyzer.analyze('最新記事')
+    assert_equal 50, result.resolved_hints[:limit]
+    refute_includes result.missing_fields, :limit
+  end
+
+  def test_analyze_prefilled_wins_over_field_default
+    fields_with_default = [
+      { name: :limit, type: :integer, required: true, default: 50 }
+    ]
+    analyzer = ChiebukuroMcp::IntentAnalyzer.new(fields_with_default, skip_if_resolved: true)
+    result = analyzer.analyze('最新記事', { limit: 5 })
+    assert_equal 5, result.resolved_hints[:limit]
+  end
+
+  def test_analyze_keyword_match_wins_over_field_default
+    fields_with_both = [
+      { name: :source, type: :string, required: true,
+        keywords: { 'cruby' => 'ruby/ruby' }, default: 'fallback_source' }
+    ]
+    analyzer = ChiebukuroMcp::IntentAnalyzer.new(fields_with_both, skip_if_resolved: true)
+    result = analyzer.analyze('CRubyの記事')
+    assert_equal 'ruby/ruby', result.resolved_hints[:source]
+  end
+
+  def test_analyze_field_default_used_when_no_keyword_match
+    fields_with_both = [
+      { name: :source, type: :string, required: true,
+        keywords: { 'cruby' => 'ruby/ruby' }, default: 'fallback_source' }
+    ]
+    analyzer = ChiebukuroMcp::IntentAnalyzer.new(fields_with_both, skip_if_resolved: true)
+    result = analyzer.analyze('無関係な文字列')
+    assert_equal 'fallback_source', result.resolved_hints[:source]
+  end
 end

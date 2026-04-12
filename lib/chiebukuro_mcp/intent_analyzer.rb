@@ -33,6 +33,16 @@ module ChiebukuroMcp
         end
       end
 
+      # Field-level default:
+      # 優先順位は prefilled > keyword match > default。ここまでで resolved に
+      # 載らなかった field に :default があれば最後に fallback として積む。
+      @fields.each do |field|
+        next if resolved.key?(field[:name])
+        next if field[:default].nil?
+
+        resolved[field[:name]] = field[:default]
+      end
+
       missing = missing.reject { |name| resolved.key?(name) } if @skip_if_resolved
 
       Result.new(missing, resolved)
