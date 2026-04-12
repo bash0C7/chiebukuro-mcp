@@ -102,6 +102,38 @@ DB 側に `_sqlite_mcp_meta` が未整備でも Server は落ちず動作する�
 - **`RecipesResource` / `HintsResource`**: 空でもリソースは返る。本文は「このDBにはまだ定義されていない」旨 1 行。
 - **旧 3 列スキーマの DB**: `MetaReader` が PRAGMA で列検出し、新列が無い DB は旧スキーマ扱いで空の recipes/hints を返す。MCP サーバ側の変更なしで後方互換が保たれる。
 
+## Prefilled clarification params（ホスト LLM による pre-fill）
+
+`chiebukuro_query_with_clarification_<db>` は、各 DB の yml に定義された
+`clarification_fields` を **tool の top-level optional params** として露出する。
+ホスト LLM（Claude Code 等）が intent から日付・ソース等を先に解析して渡せるので、
+elicitation で人間に聞く回数が減る。
+
+- **動的 `input_schema`**: `Server#build_clarify_input_schema` が
+  `clarification_fields` を走査して `{type, format, oneOf, description}` を組み立てる。
+  yml に slot を追加 → `apply_meta_patches.rb` → サーバ再起動だけで新 param が生える。
+  サーバ側コード変更は不要。
+- **Agent usage hint prepend**: tool description の先頭に `Server::CLARIFY_AGENT_USAGE_HINT`
+  を必ず貼る。「日付表現は current date 基準で parse して date param に入れろ」
+  「yml に `default` がある slot は pre-fill するな（サーバ側で silently 解決する）」
+  の 2 原則をエージェントに伝える。
+- **解決優先順位** (`IntentAnalyzer#analyze`):
+  1. `prefilled` (tool params 経由) — 最強
+  2. `clarification_fields[].hints.keywords` の部分一致
+  3. field-level `default` (yml)
+  4. どれにも当てはまらない → `missing_fields` に残り elicitation form で問う
+- **`skip_if_resolved: true`** (default): resolve 済み slot は missing_fields から除外 →
+  form にも現れない。これが「pre-fill すれば聞かれない」の実装。
+- **優先順位と `limit` default の帰結**: `limit` のように yml に `default: 20` を置いた slot は、
+  ユーザが「5 件だけ」等と明示しない限り silently 20 で解決されて form に出ない。
+  結果として「限界件数を毎回聞かれる」ストレスがなくなる。
+
+関連クラス:
+
+- `Server#build_clarify_input_schema` / `Server#clarify_field_to_json_schema`: 動的 schema 生成
+- `IntentAnalyzer#analyze(intent, prefilled = {})`: 2 引数目が host LLM pre-fill
+- `QueryWithClarificationTool#call(intent:, server_context:, **prefilled)`: kwargs で受ける
+
 ## 設定の流れ
 
 ```

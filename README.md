@@ -81,6 +81,26 @@ Plus one global tool:
 
 - `chiebukuro_probe_capabilities` — reports whether the connected MCP host declared `sampling` and `elicitation` capabilities.
 
+## Prefilled clarification params
+
+`chiebukuro_query_with_clarification_<db>` exposes every `clarification_field` from the DB's yml as a **top-level optional param** of the tool itself. The host LLM (e.g. Claude Code) can pre-fill any of them from the user's natural-language intent — typically dates it parsed against the current date, or `source_like` patterns it mapped to known sources — and only slots that remain unresolved go through elicitation.
+
+The tool description is automatically prefixed with an `[Agent usage]` hint that tells the agent:
+
+- To parse date expressions (今日 / 昨日 / 今週 / 先週 / 最近 / N日前 / concrete dates) against the current date and pass them as date params.
+- Not to pre-fill slots that have a yml-level `default` (typically `limit`) unless the user explicitly asked for a specific count — those are silently resolved server-side.
+
+Resolution priority inside `IntentAnalyzer`:
+
+1. `prefilled` (host LLM → tool params) — highest
+2. keyword match on the intent string (via `clarification_fields[].hints.keywords`)
+3. yml field-level `default`
+4. otherwise: stays in `missing_fields` and is asked via elicitation form
+
+`skip_if_resolved: true` (the default) removes any resolved slot from the elicitation form, so pre-filling is how the host avoids bothering the user.
+
+The tool's `input_schema` is built dynamically from `clarification_fields`, so adding a slot to yml + re-running `apply_meta_patches.rb` is enough — no server code change needed.
+
 ## `_sqlite_mcp_meta` extended schema
 
 Each DB can self-describe itself. `_sqlite_mcp_meta` has these columns:
