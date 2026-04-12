@@ -19,6 +19,16 @@ module ChiebukuroMcp
       { name: :limit,       type: :integer, required: true, description: '最大件数 (1-100 程度)' }
     ].freeze
 
+    CLARIFY_AGENT_USAGE_HINT = <<~HINT
+      [Agent usage] When the user intent contains date expressions
+      (今日/昨日/今週/先週/最近/N日前/具体日付 etc.), parse them using the current
+      date and pass as date_from / date_to (ISO8601 date). Similarly, pass
+      source_like patterns when the intent mentions a known source. Unfilled
+      slots will be asked via elicitation form; you don't need to resolve
+      everything.
+
+    HINT
+
     def initialize(config:, embedder:)
       @databases = config["databases"] || config[:databases]
       @embedder  = embedder
@@ -161,7 +171,8 @@ module ChiebukuroMcp
         clarify_tool_obj = QueryWithClarificationTool.new(path, field_definitions: clarify_fields)
         clarify_tool_class = MCP::Tool.define(
           name: "chiebukuro_query_with_clarification_#{db_name}",
-          description: "【chiebukuro 知恵袋】#{db_name} DBへの対話型クエリ。曖昧な要求を elicitation で期間・ソース・件数に分解してユーザーに確認してから SELECT を実行する。#{desc}",
+          description: CLARIFY_AGENT_USAGE_HINT +
+                       "【chiebukuro 知恵袋】#{db_name} DBへの対話型クエリ。曖昧な要求を elicitation で期間・ソース・件数に分解してユーザーに確認してから SELECT を実行する。#{desc}",
           input_schema: build_clarify_input_schema(clarify_fields)
         ) do |intent:, server_context: nil, **prefilled|
           result = clarify_tool_obj.call(intent: intent, server_context: server_context, **prefilled)

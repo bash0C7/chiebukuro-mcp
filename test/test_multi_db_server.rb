@@ -190,6 +190,17 @@ class TestMultiDbServer < Test::Unit::TestCase
     assert_includes prop_keys, :limit
   end
 
+  def test_clarify_tool_description_starts_with_agent_usage_hint
+    server = ChiebukuroMcp::Server.new(config: @config, embedder: @embedder)
+    mcp = server.build_mcp_server
+    clarify_tool_class = mcp.tool_classes.find { |t| t.tool_name == 'chiebukuro_query_with_clarification_db_one' }
+    refute_nil clarify_tool_class
+    description = clarify_tool_class.description
+    assert_match(/\A\[Agent usage\]/, description, 'description must start with [Agent usage] hint')
+    assert_match(/date_from/, description)
+    assert_match(/source_like/, description)
+  end
+
   def test_clarify_tool_schema_date_field_has_date_format
     server = ChiebukuroMcp::Server.new(config: @config, embedder: @embedder)
     mcp = server.build_mcp_server
