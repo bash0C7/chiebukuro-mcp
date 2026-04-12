@@ -178,4 +178,51 @@ class TestQueryWithClarificationTool < Test::Unit::TestCase
     form_schema = ctx.last_elicitation_call[:requested_schema]
     refute form_schema[:properties].key?(:source_like), 'resolved field must be skipped from form'
   end
+
+  # --- prefilled kwargs サポート ---
+
+  def test_call_with_prefilled_date_populates_form_default
+    ctx = FakeServerContext.new(
+      elicitation: :supported,
+      elicitation_content: {
+        source_like: '%',
+        limit: 5
+      }
+    )
+    tool = make_tool
+    tool.call(
+      intent: '最近の記事',
+      server_context: ctx,
+      from_date: '2026-04-06',
+      to_date: '2026-04-12'
+    )
+    form_schema = ctx.last_elicitation_call[:requested_schema]
+    # from_date / to_date は skip_if_resolved で missing から落ちる
+    refute form_schema[:properties].key?(:from_date), 'prefilled from_date should be skipped from form'
+    refute form_schema[:properties].key?(:to_date),   'prefilled to_date should be skipped from form'
+    assert form_schema[:properties].key?(:source_like), 'source_like should still be asked'
+    assert form_schema[:properties].key?(:limit),       'limit should still be asked'
+  end
+
+  def test_call_prefilled_values_flow_into_sql_params
+    ctx = FakeServerContext.new(
+      elicitation: :supported,
+      elicitation_content: {
+        source_like: 'picoruby%',
+        limit: 5
+      }
+    )
+    tool = make_tool
+    result = tool.call(
+      intent: '最新記事',
+      server_context: ctx,
+      from_date: '2020-01-01',
+      to_date: '2099-12-31'
+    )
+    parsed = JSON.parse(result)
+    assert_equal 'accept', parsed['action']
+    assert_includes parsed['params'], '2020-01-01'
+    assert_includes parsed['params'], '2099-12-31'
+    assert_includes parsed['params'], 'picoruby%'
+  end
 end

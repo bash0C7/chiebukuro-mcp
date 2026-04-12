@@ -25,7 +25,7 @@ module ChiebukuroMcp
       @form_builder = ClarificationFormBuilder.new(field_definitions)
     end
 
-    def call(intent:, server_context:)
+    def call(intent:, server_context:, **prefilled)
       raise ArgumentError, 'server_context is required' unless server_context
 
       meta = MetaReader.read_all(@db_path)
@@ -41,7 +41,7 @@ module ChiebukuroMcp
         )
       end
 
-      analysis = @analyzer.analyze(intent)
+      analysis = @analyzer.analyze(intent, prefilled)
       schema = @form_builder.build(analysis.missing_fields, analysis.resolved_hints, meta[:hints])
 
       response = server_context.create_elicitation(
