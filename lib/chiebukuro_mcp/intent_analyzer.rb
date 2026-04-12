@@ -13,12 +13,15 @@ module ChiebukuroMcp
       @skip_if_resolved = skip_if_resolved
     end
 
-    def analyze(intent)
+    def analyze(intent, prefilled = {})
       text = (intent || '').downcase
       missing = @fields.select { |f| f[:required] }.map { |f| f[:name] }
       resolved = {}
+      prefilled.each { |k, v| resolved[k.to_sym] = v unless v.nil? }
 
       @fields.each do |field|
+        next if resolved.key?(field[:name])
+
         kw_map = field[:keywords]
         next unless kw_map
 
