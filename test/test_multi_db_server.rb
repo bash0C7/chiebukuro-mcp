@@ -201,6 +201,17 @@ class TestMultiDbServer < Test::Unit::TestCase
     assert_match(/source_like/, description)
   end
 
+  def test_clarify_tool_description_mentions_yml_defaults_policy
+    server = ChiebukuroMcp::Server.new(config: @config, embedder: @embedder)
+    mcp = server.build_mcp_server
+    clarify_tool_class = mcp.tool_classes.find { |t| t.tool_name == 'chiebukuro_query_with_clarification_db_one' }
+    description = clarify_tool_class.description
+    # Agents should be told not to pre-fill slots that have yml defaults,
+    # unless the user explicitly asked for something different.
+    assert_match(/default/, description)
+    assert_match(/limit/, description)
+  end
+
   def test_clarify_tool_schema_date_field_has_date_format
     server = ChiebukuroMcp::Server.new(config: @config, embedder: @embedder)
     mcp = server.build_mcp_server

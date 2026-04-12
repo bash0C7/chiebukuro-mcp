@@ -23,9 +23,13 @@ module ChiebukuroMcp
       [Agent usage] When the user intent contains date expressions
       (今日/昨日/今週/先週/最近/N日前/具体日付 etc.), parse them using the current
       date and pass as date_from / date_to (ISO8601 date). Similarly, pass
-      source_like patterns when the intent mentions a known source. Unfilled
-      slots will be asked via elicitation form; you don't need to resolve
-      everything.
+      source_like patterns when the intent mentions a known source.
+
+      Slots with a yml-level default (typically `limit`) are silently
+      resolved on the server side — do NOT pre-fill them unless the user
+      explicitly asks for a specific count (e.g. "5 件だけ", "top 10").
+      Unfilled slots without a default will be asked via elicitation form;
+      you don't need to resolve everything yourself.
 
     HINT
 
