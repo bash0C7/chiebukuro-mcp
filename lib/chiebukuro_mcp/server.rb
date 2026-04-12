@@ -162,15 +162,9 @@ module ChiebukuroMcp
         clarify_tool_class = MCP::Tool.define(
           name: "chiebukuro_query_with_clarification_#{db_name}",
           description: "【chiebukuro 知恵袋】#{db_name} DBへの対話型クエリ。曖昧な要求を elicitation で期間・ソース・件数に分解してユーザーに確認してから SELECT を実行する。#{desc}",
-          input_schema: {
-            type: 'object',
-            properties: {
-              intent: { type: 'string', description: '自然言語の要求 (例: 最新のRuby記事見せて)' }
-            },
-            required: ['intent']
-          }
-        ) do |intent:, server_context: nil, **_|
-          result = clarify_tool_obj.call(intent: intent, server_context: server_context)
+          input_schema: build_clarify_input_schema(clarify_fields)
+        ) do |intent:, server_context: nil, **prefilled|
+          result = clarify_tool_obj.call(intent: intent, server_context: server_context, **prefilled)
           MCP::Tool::Response.new([{ type: 'text', text: result }])
         rescue ArgumentError => e
           MCP::Tool::Response.new([{ type: 'text', text: e.message }], error: true)
@@ -246,6 +240,47 @@ module ChiebukuroMcp
       server    = build_mcp_server
       transport = MCP::Server::Transports::StdioTransport.new(server)
       transport.open
+    end
+
+    private
+
+    # clarification_fields を MCP tool の input_schema JSON object に変換する。
+    # required は :intent のみ。他は optional。各 field の type に応じて
+    # JSON schema の {type, format, oneOf, description} を組み立てる。
+    def build_clarify_input_schema(clarification_fields)
+      properties = {
+        intent: { type: 'string', description: '自然言語の要求 (例: 最新のRuby記事見せて)' }
+      }
+      clarification_fields.each do |field|
+        properties[field[:name]] = clarify_field_to_json_schema(field)
+      end
+      {
+        type: 'object',
+        properties: properties,
+        required: ['intent']
+      }
+    end
+
+    def clarify_field_to_json_schema(field)
+      base = { description: field[:description] || field[:name].to_s }
+      case field[:type]
+      when :date
+        base.merge(type: 'string', format: 'date')
+      when :integer
+        base.merge(type: 'integer')
+      when :number
+        base.merge(type: 'number')
+      when :boolean
+        base.merge(type: 'boolean')
+      when :string
+        if field[:enum_values] && !field[:enum_values].empty?
+          base.merge(type: 'string', oneOf: field[:enum_values].map { |v| { const: v, title: v } })
+        else
+          base.merge(type: 'string')
+        end
+      else
+        base.merge(type: 'string')
+      end
     end
   end
 end

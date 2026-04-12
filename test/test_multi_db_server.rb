@@ -167,6 +167,41 @@ class TestMultiDbServer < Test::Unit::TestCase
     assert_include tool_class.description, 'First test DB'
   end
 
+  def test_clarify_tool_schema_includes_all_clarification_fields_as_optional
+    server = ChiebukuroMcp::Server.new(config: @config, embedder: @embedder)
+    mcp = server.build_mcp_server
+    clarify_tool_class = mcp.tool_classes.find { |t| t.tool_name == 'chiebukuro_query_with_clarification_db_one' }
+    refute_nil clarify_tool_class, 'clarify tool class must exist'
+
+    schema = clarify_tool_class.input_schema
+    schema_hash = schema.respond_to?(:to_h) ? schema.to_h : schema
+    props = schema_hash[:properties] || schema_hash['properties']
+    required = schema_hash[:required] || schema_hash['required']
+
+    # intent は required、他は optional として存在する
+    prop_keys = props.keys.map(&:to_sym)
+    assert_includes prop_keys, :intent, 'intent property missing'
+    assert_equal ['intent'], Array(required).map(&:to_s)
+
+    # 各 clarification_field が top-level property として入ってる
+    assert_includes prop_keys, :source_like
+    assert_includes prop_keys, :from_date
+    assert_includes prop_keys, :to_date
+    assert_includes prop_keys, :limit
+  end
+
+  def test_clarify_tool_schema_date_field_has_date_format
+    server = ChiebukuroMcp::Server.new(config: @config, embedder: @embedder)
+    mcp = server.build_mcp_server
+    clarify_tool_class = mcp.tool_classes.find { |t| t.tool_name == 'chiebukuro_query_with_clarification_db_one' }
+    schema_hash = clarify_tool_class.input_schema
+    schema_hash = schema_hash.to_h if schema_hash.respond_to?(:to_h)
+    props = schema_hash[:properties] || schema_hash['properties']
+    from_date_prop = props[:from_date] || props['from_date']
+    assert_equal 'string', (from_date_prop[:type] || from_date_prop['type'])
+    assert_equal 'date', (from_date_prop[:format] || from_date_prop['format'])
+  end
+
   def test_warns_when_db_has_no_recipes_and_no_clarification_fields
     tmp = Tempfile.new(['empty_db', '.sqlite3'])
     empty_path = tmp.path
