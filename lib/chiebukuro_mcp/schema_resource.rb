@@ -9,10 +9,10 @@ module ChiebukuroMcp
     end
 
     def call
-      meta = MetaReader.read_all(@db_path)
-      db = open_db
+      meta   = MetaReader.read_all(@db_path)
+      db     = open_db
       tables = read_tables(db)
-      build_schema(meta[:descriptions], tables)
+      build_schema(meta, tables)
     ensure
       db&.close
     end
@@ -34,8 +34,16 @@ module ChiebukuroMcp
       )
     end
 
-    def build_schema(descriptions, tables)
+    def build_schema(meta, tables)
       lines = []
+
+      unless meta[:meta_table_exists]
+        lines << '⚠️ WARNING: No _sqlite_mcp_meta found for this DB.'
+        lines << 'Do NOT guess table names. Use exactly the names under ## Table: below.'
+        lines << ''
+      end
+
+      descriptions = meta[:descriptions]
       db_desc = descriptions['db:ruby_knowledge'] || first_db_description(descriptions)
       lines << '# Database Schema'
       lines << "## Description: #{db_desc}" if db_desc
