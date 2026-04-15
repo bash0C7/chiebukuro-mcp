@@ -66,7 +66,7 @@ module ChiebukuroMcp
           MetaReader.read_all(path)
         rescue => e
           warn "[chiebukuro-mcp] #{db_name}: failed to read meta at startup: #{e.message}"
-          { recipes: [], clarification_fields: [] }
+          { recipes: [], clarification_fields: [], meta_table_exists: false }
         end
 
         if meta_preview[:recipes].empty? && meta_preview[:clarification_fields].empty?
