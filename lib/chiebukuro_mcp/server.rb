@@ -69,11 +69,13 @@ module ChiebukuroMcp
           { recipes: [], clarification_fields: [], meta_table_exists: false }
         end
 
-        if meta_preview[:recipes].empty? && meta_preview[:clarification_fields].empty?
-          warn "[chiebukuro-mcp] #{db_name}: no recipes and no clarification_fields in _sqlite_mcp_meta — " \
-               "query_with_clarification will fall back to generic guidance. " \
-               "Add 'recipe' or 'clarification_field' rows to _sqlite_mcp_meta " \
-               "(e.g. via dotfiles/chiebukuro-mcp/scripts/meta_patches/<db>.yml + apply_meta_patches.rb)."
+        if !meta_preview[:meta_table_exists]
+          warn "[chiebukuro-mcp] #{db_name}: _sqlite_mcp_meta table not found - " \
+               "Claude will see WARNING in schema:// output. " \
+               "Run apply_meta_patches.rb #{db_name} to add metadata."
+        elsif meta_preview[:recipes].empty? && meta_preview[:clarification_fields].empty?
+          warn "[chiebukuro-mcp] #{db_name}: _sqlite_mcp_meta exists but has no recipes/clarification_fields - " \
+               "query_with_clarification will fall back to generic guidance."
         end
 
         query_tool_obj = QueryTool.new(path)

@@ -225,19 +225,74 @@ class TestMultiDbServer < Test::Unit::TestCase
   end
 
   def test_warns_when_db_has_no_recipes_and_no_clarification_fields
-    tmp = Tempfile.new(['empty_db', '.sqlite3'])
-    empty_path = tmp.path
+    tmp = Tempfile.new(['empty_meta_table', '.sqlite3'])
+    path = tmp.path
     tmp.close
-    db = SQLite3::Database.new(empty_path)
-    db.execute('CREATE TABLE noop (id INTEGER)')
+    db = SQLite3::Database.new(path)
+    db.execute(<<~SQL)
+      CREATE TABLE _sqlite_mcp_meta (
+        object_type TEXT NOT NULL,
+        object_name TEXT NOT NULL,
+        description TEXT,
+        hints_json TEXT,
+        recipe_sql TEXT,
+        recipe_label TEXT,
+        PRIMARY KEY (object_type, object_name)
+      )
+    SQL
     db.close
 
-    config = { 'databases' => { 'empty_db' => { 'path' => empty_path, 'description' => 'x' } } }
+    config = { 'databases' => { 'empty_db' => { 'path' => path, 'description' => 'x' } } }
     server = ChiebukuroMcp::Server.new(config: config, embedder: @embedder)
 
     captured = capture_stderr { server.build_mcp_server }
-
     assert_match(/empty_db.*no recipes.*clarification_fields/, captured)
+  ensure
+    tmp&.unlink
+  end
+
+  def test_warns_table_not_found_when_no_meta_table
+    tmp = Tempfile.new(['no_meta_db', '.sqlite3'])
+    path = tmp.path
+    tmp.close
+    db = SQLite3::Database.new(path)
+    db.execute('CREATE TABLE noop (id INTEGER)')
+    db.close
+
+    config = { 'databases' => { 'no_meta_db' => { 'path' => path, 'description' => 'x' } } }
+    server = ChiebukuroMcp::Server.new(config: config, embedder: @embedder)
+
+    captured = capture_stderr { server.build_mcp_server }
+    assert_match(/_sqlite_mcp_meta table not found/, captured)
+    assert_match(/apply_meta_patches\.rb no_meta_db/, captured)
+  ensure
+    tmp&.unlink
+  end
+
+  def test_warns_empty_recipes_separately_when_meta_table_exists_but_empty
+    tmp = Tempfile.new(['empty_meta_db', '.sqlite3'])
+    path = tmp.path
+    tmp.close
+    db = SQLite3::Database.new(path)
+    db.execute(<<~SQL)
+      CREATE TABLE _sqlite_mcp_meta (
+        object_type TEXT NOT NULL,
+        object_name TEXT NOT NULL,
+        description TEXT,
+        hints_json TEXT,
+        recipe_sql TEXT,
+        recipe_label TEXT,
+        PRIMARY KEY (object_type, object_name)
+      )
+    SQL
+    db.close
+
+    config = { 'databases' => { 'empty_meta_db' => { 'path' => path, 'description' => 'x' } } }
+    server = ChiebukuroMcp::Server.new(config: config, embedder: @embedder)
+
+    captured = capture_stderr { server.build_mcp_server }
+    assert_match(/no recipes.*clarification_fields/, captured)
+    refute_match(/_sqlite_mcp_meta table not found/, captured)
   ensure
     tmp&.unlink
   end
