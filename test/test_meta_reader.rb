@@ -160,4 +160,25 @@ class TestMetaReader < Test::Unit::TestCase
   ensure
     tmp&.unlink
   end
+
+  def test_read_all_returns_meta_table_exists_false_when_no_meta_table
+    tmp = Tempfile.new(['no_meta', '.db'])
+    path = tmp.path
+    tmp.close
+    db = SQLite3::Database.new(path)
+    db.execute('CREATE TABLE some_table(x INTEGER)')
+    db.close
+
+    result = ChiebukuroMcp::MetaReader.read_all(path)
+    assert result.key?(:meta_table_exists)
+    assert_equal false, result[:meta_table_exists]
+  ensure
+    tmp&.unlink
+  end
+
+  def test_read_all_returns_meta_table_exists_true_when_meta_table_present
+    result = ChiebukuroMcp::MetaReader.read_all(@db_path)
+    assert result.key?(:meta_table_exists)
+    assert_equal true, result[:meta_table_exists]
+  end
 end

@@ -16,7 +16,7 @@ module ChiebukuroMcp
   # 旧スキーマ（hints_json / recipe_sql / recipe_label 列が無い DB）でも
   # 例外を投げずに空の結果を返す。
   class MetaReader
-    EMPTY_RESULT = { descriptions: {}, hints: {}, recipes: [], clarification_fields: [] }.freeze
+    EMPTY_RESULT = { descriptions: {}, hints: {}, recipes: [], clarification_fields: [], meta_table_exists: false }.freeze
 
     def self.read_all(db_path)
       db = open_db(db_path)
@@ -70,7 +70,8 @@ module ChiebukuroMcp
         descriptions: descriptions,
         hints: hints,
         recipes: recipes,
-        clarification_fields: clarification_fields
+        clarification_fields: clarification_fields,
+        meta_table_exists: true
       }
     ensure
       db&.close
