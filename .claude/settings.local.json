@@ -24,7 +24,9 @@
       "Bash(rm /tmp/verify_b1.db)",
       "Bash(ruby scripts/apply_meta_patches.rb)",
       "mcp__chiebukuro-mcp__chiebukuro_query_with_clarification_blog",
-      "mcp__chiebukuro-mcp__chiebukuro_query_with_clarification_health"
+      "mcp__chiebukuro-mcp__chiebukuro_query_with_clarification_health",
+      "mcp__chiebukuro-mcp__chiebukuro_semantic_search_ruby_knowledge",
+      "Bash(ruby *)"
     ]
   }
 }

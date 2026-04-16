@@ -14,17 +14,17 @@ class StubEmbedder
 end
 
 # Fake server_context that simulates the subset of MCP::ServerContext used by
-# tools that call create_sampling_message / create_elicitation.
+# tools that call create_sampling_message / create_form_elicitation.
 # Shared across multiple test files (ProbeTool, QueryWithClarificationTool, ...).
 class FakeServerContext
-  attr_reader :last_sampling_call, :last_elicitation_call
+  attr_reader :last_sampling_call, :last_form_elicitation_call
 
   def initialize(sampling: :supported, elicitation: :supported, elicitation_content: { ack: true })
     @sampling = sampling
     @elicitation = elicitation
     @elicitation_content = elicitation_content
     @last_sampling_call = nil
-    @last_elicitation_call = nil
+    @last_form_elicitation_call = nil
   end
 
   def create_sampling_message(**kwargs)
@@ -37,8 +37,8 @@ class FakeServerContext
     end
   end
 
-  def create_elicitation(**kwargs)
-    @last_elicitation_call = kwargs
+  def create_form_elicitation(**kwargs)
+    @last_form_elicitation_call = kwargs
     case @elicitation
     when :supported
       { action: 'accept', content: @elicitation_content }

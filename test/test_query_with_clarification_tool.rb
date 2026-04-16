@@ -95,7 +95,7 @@ class TestQueryWithClarificationTool < Test::Unit::TestCase
     )
     tool = make_tool
     tool.call(intent: '最新記事', server_context: ctx)
-    form_call = ctx.last_elicitation_call
+    form_call = ctx.last_form_elicitation_call
     schema = form_call[:requested_schema]
     assert_equal 'object', schema[:type]
     assert schema[:properties].key?(:source_like)
@@ -134,7 +134,7 @@ class TestQueryWithClarificationTool < Test::Unit::TestCase
       field_definitions: ChiebukuroMcp::Server::DEFAULT_CLARIFICATION_FIELDS
     )
     fake_ctx = Object.new
-    def fake_ctx.create_elicitation(**_); raise 'should not elicit'; end
+    def fake_ctx.create_form_elicitation(**_); raise 'should not elicit'; end
 
     result_json = tool.call(intent: 'find something', server_context: fake_ctx)
     result = JSON.parse(result_json)
@@ -175,7 +175,7 @@ class TestQueryWithClarificationTool < Test::Unit::TestCase
     assert_includes parsed['params'], 'ruby/ruby:trunk/%'
 
     # The elicitation form should have skipped the resolved field entirely.
-    form_schema = ctx.last_elicitation_call[:requested_schema]
+    form_schema = ctx.last_form_elicitation_call[:requested_schema]
     refute form_schema[:properties].key?(:source_like), 'resolved field must be skipped from form'
   end
 
@@ -196,7 +196,7 @@ class TestQueryWithClarificationTool < Test::Unit::TestCase
       from_date: '2026-04-06',
       to_date: '2026-04-12'
     )
-    form_schema = ctx.last_elicitation_call[:requested_schema]
+    form_schema = ctx.last_form_elicitation_call[:requested_schema]
     # from_date / to_date は skip_if_resolved で missing から落ちる
     refute form_schema[:properties].key?(:from_date), 'prefilled from_date should be skipped from form'
     refute form_schema[:properties].key?(:to_date),   'prefilled to_date should be skipped from form'
