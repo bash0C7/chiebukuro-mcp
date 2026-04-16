@@ -4,6 +4,6 @@ gemspec
 gem 'sqlite3'
 gem 'sqlite-vec'
 gem 'informers'
-gem 'mcp', path: '/Users/bash/dev/src/github.com/modelcontextprotocol/ruby-sdk'
+gem 'mcp'
 gem 'rake'
 gem 'test-unit'

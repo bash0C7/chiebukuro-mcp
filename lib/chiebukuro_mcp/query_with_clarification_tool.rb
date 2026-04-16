@@ -14,7 +14,7 @@ module ChiebukuroMcp
   #   2. MetaReader から recipes / hints を読む
   #   3. IntentAnalyzer で「何が未指定か」「キーワードヒット」を解析
   #   4. ClarificationFormBuilder で elicitation 用 JSON Schema を生成
-  #   5. server_context.create_elicitation でユーザーに聞く
+  #   5. server_context.create_form_elicitation でユーザーに聞く
   #   6. accept → SqlTemplateEngine で SQL 構築 → DB 実行 → 結果返却
   #   7. decline/cancel → その旨を返す
   class QueryWithClarificationTool
@@ -44,7 +44,7 @@ module ChiebukuroMcp
       analysis = @analyzer.analyze(intent, prefilled)
       schema = @form_builder.build(analysis.missing_fields, analysis.resolved_hints, meta[:hints])
 
-      response = server_context.create_elicitation(
+      response = server_context.create_form_elicitation(
         message: build_prompt_message(intent),
         requested_schema: schema
       )

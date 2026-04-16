@@ -37,7 +37,7 @@ module ChiebukuroMcp
     end
 
     def probe_elicitation(ctx)
-      response = ctx.create_elicitation(
+      response = ctx.create_form_elicitation(
         message: 'chiebukuro-mcp probe: please decline to confirm elicitation works.',
         requested_schema: {
           type: 'object',

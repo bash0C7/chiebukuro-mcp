@@ -7,4 +7,6 @@ Gem::Specification.new do |spec|
   spec.bindir        = 'exe'
   spec.executables   = ['chiebukuro-mcp']
   spec.require_paths = ['lib']
+
+  spec.add_dependency 'mcp', '>= 0.13.0'
 end
