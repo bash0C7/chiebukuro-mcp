@@ -318,6 +318,60 @@ class TestMultiDbServer < Test::Unit::TestCase
     assert_match(/\A\d{4}-\d{2}-\d{2}T/,   entry['ts'])
   end
 
+  def test_semantic_search_tool_emits_structured_json_log
+    server = ChiebukuroMcp::Server.new(config: @config, embedder: @embedder)
+    mcp    = server.build_mcp_server
+    sem_tool = mcp.tool_classes.find { |t| t.tool_name == 'chiebukuro_semantic_search_db_one' }
+
+    captured = capture_stderr { sem_tool.call(query: "hello", server_context: nil) }
+    json_line = captured.lines.find { |l| l.start_with?('{') }
+    assert_not_nil json_line
+    entry = JSON.parse(json_line)
+    assert_equal 'chiebukuro_semantic_search_db_one', entry['tool']
+    assert_equal 'db_one',                            entry['db']
+  end
+
+  def test_explain_query_tool_emits_structured_json_log
+    server = ChiebukuroMcp::Server.new(config: @config, embedder: @embedder)
+    mcp    = server.build_mcp_server
+    exp_tool = mcp.tool_classes.find { |t| t.tool_name == 'chiebukuro_explain_query_db_two' }
+
+    captured = capture_stderr { exp_tool.call(sql: "SELECT 1", server_context: nil) }
+    json_line = captured.lines.find { |l| l.start_with?('{') }
+    assert_not_nil json_line
+    entry = JSON.parse(json_line)
+    assert_equal 'chiebukuro_explain_query_db_two', entry['tool']
+  end
+
+  def test_clarification_tool_emits_structured_json_log
+    server = ChiebukuroMcp::Server.new(config: @config, embedder: @embedder)
+    mcp    = server.build_mcp_server
+    clr_tool = mcp.tool_classes.find { |t| t.tool_name == 'chiebukuro_query_with_clarification_db_two' }
+
+    ctx = FakeServerContext.new(elicitation: :cancelled)
+    captured = capture_stderr do
+      clr_tool.call(intent: "test", server_context: ctx)
+    end
+    json_line = captured.lines.find { |l| l.start_with?('{') }
+    assert_not_nil json_line
+    entry = JSON.parse(json_line)
+    assert_equal 'chiebukuro_query_with_clarification_db_two', entry['tool']
+  end
+
+  def test_probe_tool_emits_structured_json_log
+    server = ChiebukuroMcp::Server.new(config: @config, embedder: @embedder)
+    mcp    = server.build_mcp_server
+    probe_tool = mcp.tool_classes.find { |t| t.tool_name == 'chiebukuro_probe_capabilities' }
+
+    ctx = FakeServerContext.new
+    captured = capture_stderr { probe_tool.call(server_context: ctx) }
+    json_line = captured.lines.find { |l| l.start_with?('{') }
+    assert_not_nil json_line
+    entry = JSON.parse(json_line)
+    assert_equal 'chiebukuro_probe_capabilities', entry['tool']
+    assert_equal '-',                             entry['db']  # DB-independent tools use "-"
+  end
+
   private
 
   def capture_stderr
