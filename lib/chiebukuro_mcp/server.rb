@@ -24,7 +24,7 @@ module ChiebukuroMcp
         elapsed_ms = ((Time.now - t0) * 1000).to_i
         rows       = extract_row_count(result)
         entry = {
-          ts:          Time.now.iso8601,
+          ts:          t0.iso8601,
           kind:        'tool_call',
           tool:        tool_name,
           db:          db_name,
@@ -41,8 +41,8 @@ module ChiebukuroMcp
         return 0 unless response.respond_to?(:content)
         text = response.content.first[:text] || response.content.first['text']
         return 0 unless text.is_a?(String)
-        lines = text.split("\n").reject(&:empty?)
-        [lines.length - 1, 0].max
+        parsed = JSON.parse(text)
+        parsed.is_a?(Array) ? parsed.length : 0
       rescue
         0
       end
