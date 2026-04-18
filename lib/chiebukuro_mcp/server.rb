@@ -154,9 +154,14 @@ module ChiebukuroMcp
               },
               required: ['query']
             }
-          ) do |query:, limit: 5, source_filter: nil, **_|
-            result = sem_tool_obj.call(query: query, limit: limit, source_filter: source_filter)
-            MCP::Tool::Response.new([{ type: 'text', text: result }])
+          ) do |query:, limit: 5, source_filter: nil, server_context: nil, **_|
+            _ = server_context
+            ChiebukuroMcp::Server.wrap_with_log_proc(
+              tool_name: "chiebukuro_semantic_search_#{db_name}", db_name: db_name
+            ) do
+              result = sem_tool_obj.call(query: query, limit: limit, source_filter: source_filter)
+              MCP::Tool::Response.new([{ type: 'text', text: result }])
+            end
           rescue => e
             MCP::Tool::Response.new([{ type: 'text', text: e.message }], error: true)
           end
@@ -204,9 +209,14 @@ module ChiebukuroMcp
             },
             required: ['sql']
           }
-        ) do |sql:, **_|
-          result = explain_tool_obj.call(sql: sql)
-          MCP::Tool::Response.new([{ type: 'text', text: result }])
+        ) do |sql:, server_context: nil, **_|
+          _ = server_context
+          ChiebukuroMcp::Server.wrap_with_log_proc(
+            tool_name: "chiebukuro_explain_query_#{db_name}", db_name: db_name
+          ) do
+            result = explain_tool_obj.call(sql: sql)
+            MCP::Tool::Response.new([{ type: 'text', text: result }])
+          end
         rescue ArgumentError => e
           MCP::Tool::Response.new([{ type: 'text', text: e.message }], error: true)
         rescue => e
@@ -222,8 +232,12 @@ module ChiebukuroMcp
                        "【chiebukuro 知恵袋】#{db_name} DBへの対話型クエリ。曖昧な要求を elicitation で期間・ソース・件数に分解してユーザーに確認してから SELECT を実行する。#{desc}",
           input_schema: build_clarify_input_schema(clarify_fields)
         ) do |intent:, server_context: nil, **prefilled|
-          result = clarify_tool_obj.call(intent: intent, server_context: server_context, **prefilled)
-          MCP::Tool::Response.new([{ type: 'text', text: result }])
+          ChiebukuroMcp::Server.wrap_with_log_proc(
+            tool_name: "chiebukuro_query_with_clarification_#{db_name}", db_name: db_name
+          ) do
+            result = clarify_tool_obj.call(intent: intent, server_context: server_context, **prefilled)
+            MCP::Tool::Response.new([{ type: 'text', text: result }])
+          end
         rescue ArgumentError => e
           MCP::Tool::Response.new([{ type: 'text', text: e.message }], error: true)
         rescue => e
@@ -238,8 +252,12 @@ module ChiebukuroMcp
         description: '【chiebukuro 知恵袋】MCP ホストが sampling と elicitation の capability を宣言しているか実地で確認する実証ツール。引数なし。',
         input_schema: { type: 'object', properties: {} }
       ) do |server_context: nil, **_|
-        result = probe_tool_obj.call(server_context: server_context)
-        MCP::Tool::Response.new([{ type: 'text', text: result }])
+        ChiebukuroMcp::Server.wrap_with_log_proc(
+          tool_name: 'chiebukuro_probe_capabilities', db_name: '-'
+        ) do
+          result = probe_tool_obj.call(server_context: server_context)
+          MCP::Tool::Response.new([{ type: 'text', text: result }])
+        end
       rescue => e
         MCP::Tool::Response.new([{ type: 'text', text: e.message }], error: true)
       end
