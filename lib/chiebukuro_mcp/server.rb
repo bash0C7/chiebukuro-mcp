@@ -1,3 +1,4 @@
+require 'json'
 require 'mcp'
 require 'mcp/server/transports/stdio_transport'
 require_relative 'query_tool'
@@ -12,6 +13,41 @@ require_relative 'meta_reader'
 
 module ChiebukuroMcp
   class Server
+    class << self
+      # 各 MCP tool 呼び出しを wrap して構造化 JSON ログを stderr に 1 行出す。
+      # 既存の人間向け警告 (`[chiebukuro-mcp] ...`、先頭 `[`) を壊さないため
+      # JSON は先頭 `{` + `kind` キー必須で識別する。
+      # MCP::Tool.define のブロックから呼び出せるようクラスメソッドで提供する。
+      def wrap_with_log_proc(tool_name:, db_name:, &block)
+        t0     = Time.now
+        result = block.call
+        elapsed_ms = ((Time.now - t0) * 1000).to_i
+        rows       = extract_row_count(result)
+        entry = {
+          ts:          Time.now.iso8601,
+          kind:        'tool_call',
+          tool:        tool_name,
+          db:          db_name,
+          result_rows: rows,
+          elapsed_ms:  elapsed_ms
+        }
+        warn JSON.generate(entry)
+        result
+      end
+
+      # MCP::Tool::Response から result_rows を best-effort で推定する。
+      # 厳密な行数を返せない場合は 0 で良い（ログの目的は偏り観測、正確性ではない）。
+      def extract_row_count(response)
+        return 0 unless response.respond_to?(:content)
+        text = response.content.first[:text] || response.content.first['text']
+        return 0 unless text.is_a?(String)
+        lines = text.split("\n").reject(&:empty?)
+        [lines.length - 1, 0].max
+      rescue
+        0
+      end
+    end
+
     DEFAULT_CLARIFICATION_FIELDS = [
       { name: :source_like, type: :string,  required: true, description: 'source カラムの LIKE パターン (例: picoruby/%)', meta_hint_key: 'memories.source' },
       { name: :from_date,   type: :date,    required: true, description: '期間の開始日 (YYYY-MM-DD)' },
@@ -89,9 +125,14 @@ module ChiebukuroMcp
             },
             required: ['sql']
           }
-        ) do |sql:, **_|
-          result = query_tool_obj.call(sql: sql)
-          MCP::Tool::Response.new([{ type: 'text', text: result }])
+        ) do |sql:, server_context: nil, **_|
+          _ = server_context
+          ChiebukuroMcp::Server.wrap_with_log_proc(
+            tool_name: "chiebukuro_query_#{db_name}", db_name: db_name
+          ) do
+            result = query_tool_obj.call(sql: sql)
+            MCP::Tool::Response.new([{ type: 'text', text: result }])
+          end
         rescue ArgumentError => e
           MCP::Tool::Response.new([{ type: 'text', text: e.message }], error: true)
         rescue => e
