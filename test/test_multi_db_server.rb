@@ -297,6 +297,27 @@ class TestMultiDbServer < Test::Unit::TestCase
     tmp&.unlink
   end
 
+  def test_query_tool_emits_structured_json_log_to_stderr
+    server = ChiebukuroMcp::Server.new(config: @config, embedder: @embedder)
+    mcp    = server.build_mcp_server
+    query_tool = mcp.tool_classes.find { |t| t.tool_name == 'chiebukuro_query_db_one' }
+
+    captured = capture_stderr do
+      query_tool.call(sql: "SELECT 1", server_context: nil)
+    end
+
+    json_line = captured.lines.find { |l| l.start_with?('{') }
+    assert_not_nil json_line, "期待: JSON ログ行が stderr に出る / 実際の stderr:\n#{captured}"
+
+    entry = JSON.parse(json_line)
+    assert_equal 'tool_call',              entry['kind']
+    assert_equal 'chiebukuro_query_db_one', entry['tool']
+    assert_equal 'db_one',                 entry['db']
+    assert_kind_of Integer,                entry['elapsed_ms']
+    assert_kind_of Integer,                entry['result_rows']
+    assert_match(/\A\d{4}-\d{2}-\d{2}T/,   entry['ts'])
+  end
+
   private
 
   def capture_stderr
