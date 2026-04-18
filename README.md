@@ -126,6 +126,29 @@ If a DB has no recipes and no clarification_fields, the server:
 
 The recipe/hints data itself is managed outside this repo — see `dotfiles/chiebukuro-mcp/scripts/meta_patches/*.yml`.
 
+## Structured call logs (stderr)
+
+Every MCP tool call emits a single-line JSON entry to stderr so that host-side log consumers can audit routing decisions and tool selection without touching the repo.
+
+Example:
+
+```json
+{"ts":"2026-04-18T11:01:08+09:00","kind":"tool_call","tool":"chiebukuro_query_health","db":"health","result_rows":7,"elapsed_ms":42}
+```
+
+Fields:
+
+- `ts` — ISO8601 start of the call (JST).
+- `kind` — `tool_call` (reserved for future kinds like `resource_read`).
+- `tool` — full MCP tool name.
+- `db` — target DB name, or `-` for DB-independent tools (e.g. `chiebukuro_probe_capabilities`).
+- `result_rows` — best-effort count of rows in the response (0 on parse failure).
+- `elapsed_ms` — integer milliseconds.
+
+JSON lines (`{` prefix) are disjoint from existing human-readable startup warnings (`[chiebukuro-mcp] ...`, `[` prefix), so downstream `grep` / `jq` can split them by first character.
+
+This is purely additive — no MCP protocol impact, no change to tool results.
+
 ## Development
 
 ```bash
