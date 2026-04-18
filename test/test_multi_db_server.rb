@@ -372,6 +372,32 @@ class TestMultiDbServer < Test::Unit::TestCase
     assert_equal '-',                             entry['db']  # DB-independent tools use "-"
   end
 
+  def test_human_warning_and_json_log_coexist_on_startup_and_call
+    # meta 欠損 DB を作り、起動時 warn + tool 呼び出しによる JSON ログの両方が出ることを確認
+    tmp = Tempfile.new(['no_meta', '.sqlite3'])
+    path = tmp.path
+    tmp.close
+    db = SQLite3::Database.new(path)
+    db.execute('CREATE TABLE noop (id INTEGER)')
+    db.close
+
+    config = { 'databases' => { 'no_meta_db' => { 'path' => path, 'description' => 'x' } } }
+    server = ChiebukuroMcp::Server.new(config: config, embedder: @embedder)
+
+    mcp = nil
+    captured_startup = capture_stderr { mcp = server.build_mcp_server }
+    assert_match(/\A\[chiebukuro-mcp\]/, captured_startup.lines.first)  # human starts with `[`
+    refute_match(/^\{/, captured_startup)                                # no JSON at startup
+
+    query_tool = mcp.tool_classes.find { |t| t.tool_name == 'chiebukuro_query_no_meta_db' }
+    captured_call = capture_stderr { query_tool.call(sql: "SELECT 1", server_context: nil) }
+    json_line = captured_call.lines.find { |l| l.start_with?('{') }
+    assert_not_nil json_line, "expected JSON log on tool call"
+    assert_equal 'tool_call', JSON.parse(json_line)['kind']
+  ensure
+    tmp&.unlink
+  end
+
   private
 
   def capture_stderr
