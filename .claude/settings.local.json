@@ -26,7 +26,9 @@
       "mcp__chiebukuro-mcp__chiebukuro_query_with_clarification_blog",
       "mcp__chiebukuro-mcp__chiebukuro_query_with_clarification_health",
       "mcp__chiebukuro-mcp__chiebukuro_semantic_search_ruby_knowledge",
-      "Bash(ruby *)"
+      "Bash(ruby *)",
+      "Bash(git switch *)",
+      "Bash(bundle exec ruby -Ilib -r chiebukuro_mcp/server *)"
     ]
   }
 }
