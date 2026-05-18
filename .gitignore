@@ -2,3 +2,4 @@ vendor/bundle/
 .bundle/
 *.gem
 docs/superpowers/
+.claude/settings.local.json
